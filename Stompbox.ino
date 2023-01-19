@@ -71,6 +71,7 @@ void log(const char *) {
 // ** global **
 
 CRGB leds[NUM_LEDS];
+long tt; // @#@t
 
 // ** visual **
 
@@ -132,12 +133,23 @@ void startup_lightshow() {
 
 void idle_animation() {
 
-  leds[3] = CHSV(66, 255, 255);
-  FastLED.show();
-  delay(200);
-  leds[3] = CHSV(66, 100, 211);
-  FastLED.show();
-  delay(1700);
+  // lamps each sparkle in antici...
+  for (int i = 1; i < NUM_LEDS; i++) {
+    int j;
+    for (j = 127; j < 256; j += 8) {
+      leds[i] = CHSV(50, 200, j);
+      FastLED.show();
+      delay(1);
+    }
+    delay(30);
+    for (; j > 127; j -= 8) {
+      leds[i] = CHSV(50, 200, j);
+      FastLED.show();
+      delay(1);
+    }
+    delay(15);
+  }
+  // ...pation
 
 }
 
@@ -153,12 +165,17 @@ void setup() {
 	FastLED.setBrightness(LED_MASTER_BRIGHTNESS);
 
   startup_lightshow();
-   
+  
+  tt = 0; // @#@t
 }
 
 void loop() {
 
   log("Stompbox looping.");
- // idle_animation();
-
+ /*
+  tt++;
+  if (0 == tt % 25000) {
+    idle_animation();
+  }
+*/
 }
