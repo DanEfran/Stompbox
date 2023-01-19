@@ -43,13 +43,22 @@ RST (Reset button is connected to reset pin.)
 */
 
 
-#include <FastLED.h>
+// ** compiler **
 
 #define SERIAL_LOGGING
 
+// ** include ** 
+
+#include <FastLED.h>
+
+// ** define **
+
+#define LED_MASTER_BRIGHTNESS 127
+
 #define NUM_LEDS 6
-#define DATA_PIN 14
-CRGB leds[NUM_LEDS];
+#define LED_DATA 14
+
+// ** logging **
 
 void log(const char *) {
 
@@ -59,30 +68,51 @@ void log(const char *) {
 
 }
 
+// ** global **
+
+CRGB leds[NUM_LEDS];
+
+// ** visual **
+
+void startup_lightshow() {
+  
+  leds[0] = CHSV(0, 255, 255);
+  for(int i = 1; i < NUM_LEDS; i++) {
+    leds[i] = CHSV(66, 100, 211);
+  }
+  FastLED.show();
+
+}
+
+void idle_animation() {
+
+  leds[3] = CHSV(66, 255, 255);
+  FastLED.show();
+  delay(200);
+  leds[3] = CHSV(66, 100, 211);
+  FastLED.show();
+  delay(1700);
+
+}
+
+// ** main **
+
 void setup() {
 
 #ifdef SERIAL_LOGGING
   Serial.begin(57600);
 #endif
 
-	FastLED.addLeds<WS2812,DATA_PIN,RGB>(leds,NUM_LEDS);
-	FastLED.setBrightness(80);
+	FastLED.addLeds<WS2812,LED_DATA,RGB>(leds,NUM_LEDS);
+	FastLED.setBrightness(LED_MASTER_BRIGHTNESS);
 
-    leds[0] = CHSV(0, 255, 255);
-  	for(int i = 1; i < NUM_LEDS; i++) {
-		  leds[i] = CHSV(66, 100, 211);
-    }
-  FastLED.show();
-
+  startup_lightshow();
+   
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  leds[4] = CHSV(66, 255, 255);
-  FastLED.show();
-  delay(200);
-  leds[4] = CHSV(66, 100, 211);
-  FastLED.show();
+
   log("Stompbox looping.");
-  delay(1700);
- }
+  idle_animation();
+
+}
