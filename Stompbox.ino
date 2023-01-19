@@ -7,8 +7,6 @@ CRGB leds[NUM_LEDS];
 void setup() {
 
   Serial.begin(57600);
-	Serial.println("Stompbox resetting");
-
 	FastLED.addLeds<WS2812,DATA_PIN,RGB>(leds,NUM_LEDS);
 	FastLED.setBrightness(80);
 
@@ -27,5 +25,6 @@ void loop() {
   delay(200);
   leds[4] = CHSV(66, 100, 211);
   FastLED.show();
+  Serial.println("Stompbox looping.");
   delay(1700);
  }
