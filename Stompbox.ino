@@ -53,12 +53,14 @@ RST (Reset button is connected to reset pin.)
 
 // ** define **
 
-#define LED_MASTER_BRIGHTNESS 127
+typedef uint8_t byte;
 
-#define NUM_LEDS 6
-#define PIN_LED_DATA 14
+const byte LED_MASTER_BRIGHTNESS = 127;
 
-#define NUM_BUTTONS 6
+const int NUM_LEDS = 6;
+const int PIN_LED_DATA = 14;
+
+const int NUM_BUTTONS = 6;
 
 // ** logging **
 
@@ -75,9 +77,9 @@ void log(const char *) {
 CRGB leds[NUM_LEDS];
 long tt; // @#@t
 
-// ** visual display (LEDs) **
+int button_state[NUM_BUTTONS];
 
-typedef uint8_t byte;
+// ** visual display (LEDs) **
 
 const byte V_RECORD_IDLE = 140;
 const byte V_LAMP_IDLE = 128;
@@ -90,6 +92,7 @@ const byte H_VINTAGE_LAMP = 50;
 const byte S_VINTAGE_LAMP = 200;
 const byte S_FULL = 255;
 
+/// brighten or darken an LED
 void glow_change(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step) {
 
   if (change_step == 0) {
@@ -105,14 +108,17 @@ void glow_change(int led, byte hue, byte sat, byte val_from, byte val_to, int sl
   }
 }
 
+/// brighten an LED
 void glow_up(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step = 1) {
   glow_change(led, hue, sat, val_from, val_to, slowness, change_step);
 }
 
+/// darken an LED
 void glow_down(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step = -1) {
   glow_change(led, hue, sat, val_from, val_to, slowness, change_step);
 }
 
+/// startup lamp test, indicating start of program after power-up or reset
 void startup_lightshow() {
 
   // begin dark
@@ -146,6 +152,7 @@ void startup_lightshow() {
 
 }
 
+/// optional idle animation. proof of concept. might be useful when debugging to show program is still running
 void idle_animation() {
 
   // lamps each sparkle in antici...
@@ -162,8 +169,8 @@ void idle_animation() {
 
 // ** controls **
 
-int button_state[NUM_BUTTONS];
 
+/// set up data structures for control inputs
 void init_controls() {
 
   for (int ii = 0; ii < NUM_BUTTONS; ii++) {
@@ -172,6 +179,7 @@ void init_controls() {
 
 }
 
+/// poll all controls once for changes
 void scan_controls() {
 
 
@@ -180,6 +188,7 @@ void scan_controls() {
 
 // ** main **
 
+/// main arduino init
 void setup() {
 
 #ifdef SERIAL_LOGGING
@@ -191,9 +200,11 @@ void setup() {
 
   startup_lightshow();
   
-  tt = 0; // @#@t
-}
+  //tt = 0; // @#@t
 
+} // setup
+
+/// main arduino loop
 void loop() {
 
   log("Stompbox looping.");
@@ -206,5 +217,4 @@ void loop() {
 
   scan_controls();
 
-
-}
+} // loop
