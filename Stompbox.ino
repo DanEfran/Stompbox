@@ -56,7 +56,9 @@ RST (Reset button is connected to reset pin.)
 #define LED_MASTER_BRIGHTNESS 127
 
 #define NUM_LEDS 6
-#define LED_DATA 14
+#define PIN_LED_DATA 14
+
+#define NUM_BUTTONS 6
 
 // ** logging **
 
@@ -73,55 +75,66 @@ void log(const char *) {
 CRGB leds[NUM_LEDS];
 long tt; // @#@t
 
-// ** visual **
+// ** visual display (LEDs) **
+
+const uint8_t V_RECORD_IDLE = 140;
+const uint8_t V_LAMP_IDLE = 128;
+const uint8_t V_FULL = 255;
+const uint8_t V_OFF = 0;
+
+const uint8_t H_RED = 0;
+const uint8_t H_VINTAGE_LAMP = 50;
+
+const uint8_t S_VINTAGE_LAMP = 200;
+const uint8_t S_FULL = 255;
 
 void startup_lightshow() {
 
   // begin dark
-  leds[0] = CHSV(0, 255, 0);
+  leds[0] = CHSV(H_RED, S_FULL, V_OFF);
   for (int i = 1; i < NUM_LEDS; i++) {
-    leds[i] = CHSV(50, 200, 0);
+    leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_OFF);
   }
   FastLED.show();
 
   // each lamp glows on
   for (int i = 1; i < NUM_LEDS; i++) {
-    for (int j = 0; j < 128; j += 1) {
-      leds[i] = CHSV(50, 200, j);
+    for (int j = V_OFF; j < V_LAMP_IDLE; j += 1) {
+      leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, j);
       FastLED.show();
       delay(2);
     }
   }
 
   // record light glows quite bright...
-  for (int m = 0; m < 256; m += 1) {
-    leds[0] = CHSV(0, 255, m);
+  for (int m = V_OFF; m < V_FULL; m += 1) {
+    leds[0] = CHSV(H_RED, S_FULL, m);
     FastLED.show();
     delay(3);
   }
 
-  delay(500);
+  delay(300);
 
   // ...then dims to idle
-  for (int m = 255; m > 127; m -= 1) {
-    leds[0] = CHSV(0, 255, m);
+  for (int m = V_FULL; m > V_RECORD_IDLE; m -= 1) {
+    leds[0] = CHSV(H_RED, S_FULL, m);
     FastLED.show();
-    delay(3);
+    delay(4);
   }
 
-  delay(500);
+  delay(700);
 
   // lamps each sparkle in antici...
   for (int i = 1; i < NUM_LEDS; i++) {
     int j;
-    for (j = 127; j < 256; j += 8) {
-      leds[i] = CHSV(50, 200, j);
+    for (j = V_LAMP_IDLE; j < V_FULL; j += 8) {
+      leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, j);
       FastLED.show();
       delay(1);
     }
     delay(30);
-    for (; j > 127; j -= 8) {
-      leds[i] = CHSV(50, 200, j);
+    for (; j > V_LAMP_IDLE; j -= 8) {
+      leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, j);
       FastLED.show();
       delay(1);
     }
@@ -136,14 +149,14 @@ void idle_animation() {
   // lamps each sparkle in antici...
   for (int i = 1; i < NUM_LEDS; i++) {
     int j;
-    for (j = 127; j < 256; j += 8) {
-      leds[i] = CHSV(50, 200, j);
+    for (j = V_LAMP_IDLE; j < V_FULL; j += 8) {
+      leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, j);
       FastLED.show();
       delay(1);
     }
     delay(30);
-    for (; j > 127; j -= 8) {
-      leds[i] = CHSV(50, 200, j);
+    for (; j > V_LAMP_IDLE; j -= 8) {
+      leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, j);
       FastLED.show();
       delay(1);
     }
@@ -153,6 +166,25 @@ void idle_animation() {
 
 }
 
+
+// ** controls **
+
+int button_state[NUM_BUTTONS];
+
+void init_controls() {
+
+  for (int ii = 0; ii < NUM_BUTTONS; ii++) {
+    button_state[ii] = 0;
+  }
+
+}
+
+void scan_controls() {
+
+
+}
+  
+
 // ** main **
 
 void setup() {
@@ -161,7 +193,7 @@ void setup() {
   Serial.begin(57600);
 #endif
 
-	FastLED.addLeds<WS2812,LED_DATA,RGB>(leds,NUM_LEDS);
+	FastLED.addLeds<WS2812,PIN_LED_DATA,RGB>(leds,NUM_LEDS);
 	FastLED.setBrightness(LED_MASTER_BRIGHTNESS);
 
   startup_lightshow();
@@ -178,4 +210,8 @@ void loop() {
     idle_animation();
   }
 */
+
+  scan_controls();
+
+
 }
