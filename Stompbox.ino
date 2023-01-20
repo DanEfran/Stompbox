@@ -56,6 +56,7 @@ typedef uint8_t byte; // easier to type
 
 const byte LED_MASTER_BRIGHTNESS = 127;
 
+// arduino pin assignments
 const int NUM_LEDS = 6;
 const int NUM_BUTTONS = 6;
 const int PIN_LED_DATA = 14; // NeoPixel data out. Controlled via FastLED library.
