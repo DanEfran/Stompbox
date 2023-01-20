@@ -53,17 +53,19 @@ RST (Reset button is connected to reset pin.)
 
 // ** define **
 
-typedef uint8_t byte;
+typedef uint8_t byte; // easier to type
 
 const byte LED_MASTER_BRIGHTNESS = 127;
 
 const int NUM_LEDS = 6;
+const int NUM_BUTTONS = 6;
+
 const int PIN_LED_DATA = 14;
 
-const int NUM_BUTTONS = 6;
 
 // ** logging **
 
+/// print a message over the serial I/O line...only if relevant #define is operative. No-op otherwise.
 void log(const char *) {
 
 #ifdef SERIAL_LOGGING
@@ -75,6 +77,7 @@ void log(const char *) {
 // ** global **
 
 CRGB leds[NUM_LEDS];
+
 long tt; // @#@t
 
 int button_state[NUM_BUTTONS];
