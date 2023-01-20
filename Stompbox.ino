@@ -42,7 +42,6 @@ RST (Reset button is connected to reset pin.)
 
 */
 
-
 // ** compiler **
 
 #define SERIAL_LOGGING
@@ -59,9 +58,28 @@ const byte LED_MASTER_BRIGHTNESS = 127;
 
 const int NUM_LEDS = 6;
 const int NUM_BUTTONS = 6;
+const int PIN_LED_DATA = 14; // NeoPixel data out. Controlled via FastLED library.
+const int PIN_BUTTON_0 = A3; // 'Record' button. LED 0 illuminates the clear button itself (other buttons' LEDs are just adjacent display lamps)
+const int PIN_BUTTON_1 = 2;
+const int PIN_BUTTON_2 = 3;
+const int PIN_BUTTON_3 = 5;
+const int PIN_BUTTON_4 = 7;
+const int PIN_BUTTON_5 = 9;
+const int ROTARY_1_A = 10; // 30-step rotary encoder knobs have A and B outputs
+const int ROTARY_1_B = 11;
+const int ROTARY_2_A = 12;
+const int ROTARY_2_B = 16;
+const int ROTARY_3_A = A5;
+const int ROTARY_3_B = A4;
+const int PIN_KNOB_SELECT_1 = 4; // button input from pushable knob
+const int PIN_KNOB_SELECT_2 = 6;
+const int PIN_KNOB_SELECT_3 = 8;
+const int PIN_PEDAL_X = A0; // integrated "pedal" joystick depressed left, i.e. SW (@#@?)
+const int PIN_PEDAL_Y = A1; // integrated "pedal" joystick depressed right, i.e. SE (@#@?)
+const int PIN_PEDAL_Z = A2; // external expression pedal input (note: pedal polarity may vary, software must be adjustable)
+const int PIN_PEDAL_SELECT = 15; // integrated "pedal" joystick is pushable. button input. (may be prone to false positives; avoid for critical functions)
 
-const int PIN_LED_DATA = 14;
-
+const int PIN_BUTTON[NUM_BUTTONS] = {PIN_BUTTON_0, PIN_BUTTON_1, PIN_BUTTON_2, PIN_BUTTON_3, PIN_BUTTON_4, PIN_BUTTON_5};
 
 // ** logging **
 
@@ -77,8 +95,6 @@ void log(const char *) {
 // ** global **
 
 CRGB leds[NUM_LEDS];
-
-long tt; // @#@t
 
 int button_state[NUM_BUTTONS];
 
@@ -158,6 +174,12 @@ void startup_lightshow() {
 /// optional idle animation. proof of concept. might be useful when debugging to show program is still running
 void idle_animation() {
 
+  static long tt = 0;
+
+  if (0 != ++tt % 50000) {
+    return;
+   }
+
   // lamps each sparkle in antici...
   for (int i = 1; i < NUM_LEDS; i++) {
     glow_up(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_LAMP_IDLE, V_FULL, 1, 8);
@@ -203,20 +225,15 @@ void setup() {
 
   startup_lightshow();
   
-  //tt = 0; // @#@t
-
 } // setup
 
 /// main arduino loop
 void loop() {
 
   log("Stompbox looping.");
- /*
-  tt++;
-  if (0 == tt % 25000) {
-    idle_animation();
-  }
-*/
+ 
+  idle_animation();
+
 
   scan_controls();
 
