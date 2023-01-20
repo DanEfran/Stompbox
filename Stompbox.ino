@@ -77,16 +77,41 @@ long tt; // @#@t
 
 // ** visual display (LEDs) **
 
-const uint8_t V_RECORD_IDLE = 140;
-const uint8_t V_LAMP_IDLE = 128;
-const uint8_t V_FULL = 255;
-const uint8_t V_OFF = 0;
+typedef uint8_t byte;
 
-const uint8_t H_RED = 0;
-const uint8_t H_VINTAGE_LAMP = 50;
+const byte V_RECORD_IDLE = 140;
+const byte V_LAMP_IDLE = 128;
+const byte V_FULL = 255;
+const byte V_OFF = 0;
 
-const uint8_t S_VINTAGE_LAMP = 200;
-const uint8_t S_FULL = 255;
+const byte H_RED = 0;
+const byte H_VINTAGE_LAMP = 50;
+
+const byte S_VINTAGE_LAMP = 200;
+const byte S_FULL = 255;
+
+void glow_change(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step) {
+
+  if (change_step == 0) {
+    leds[led] = CHSV(hue, sat, val_to);
+    FastLED.show();
+    return;
+  }
+
+  for (int j = val_from; (change_step > 0) ? (j < val_to) : (j > val_to); j += change_step) {
+    leds[led] = CHSV(hue, sat, j);
+    FastLED.show();
+    delay(slowness);
+  }
+}
+
+void glow_up(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step = 1) {
+  glow_change(led, hue, sat, val_from, val_to, slowness, change_step);
+}
+
+void glow_down(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step = -1) {
+  glow_change(led, hue, sat, val_from, val_to, slowness, change_step);
+}
 
 void startup_lightshow() {
 
@@ -99,45 +124,22 @@ void startup_lightshow() {
 
   // each lamp glows on
   for (int i = 1; i < NUM_LEDS; i++) {
-    for (int j = V_OFF; j < V_LAMP_IDLE; j += 1) {
-      leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, j);
-      FastLED.show();
-      delay(2);
-    }
+    glow_up(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_OFF, V_LAMP_IDLE, 2);
   }
 
   // record light glows quite bright...
-  for (int m = V_OFF; m < V_FULL; m += 1) {
-    leds[0] = CHSV(H_RED, S_FULL, m);
-    FastLED.show();
-    delay(3);
-  }
-
+  glow_up(0, H_RED, S_FULL, V_OFF, V_FULL, 3);
   delay(300);
 
   // ...then dims to idle
-  for (int m = V_FULL; m > V_RECORD_IDLE; m -= 1) {
-    leds[0] = CHSV(H_RED, S_FULL, m);
-    FastLED.show();
-    delay(4);
-  }
-
+  glow_down(0, H_RED, S_FULL, V_FULL, V_RECORD_IDLE, 4);
   delay(700);
 
   // lamps each sparkle in antici...
   for (int i = 1; i < NUM_LEDS; i++) {
-    int j;
-    for (j = V_LAMP_IDLE; j < V_FULL; j += 8) {
-      leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, j);
-      FastLED.show();
-      delay(1);
-    }
+    glow_up(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_LAMP_IDLE, V_FULL, 1, 8);
     delay(30);
-    for (; j > V_LAMP_IDLE; j -= 8) {
-      leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, j);
-      FastLED.show();
-      delay(1);
-    }
+    glow_down(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_FULL, V_LAMP_IDLE, 1, -8);
     delay(15);
   }
   // ...pation
@@ -148,18 +150,9 @@ void idle_animation() {
 
   // lamps each sparkle in antici...
   for (int i = 1; i < NUM_LEDS; i++) {
-    int j;
-    for (j = V_LAMP_IDLE; j < V_FULL; j += 8) {
-      leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, j);
-      FastLED.show();
-      delay(1);
-    }
+    glow_up(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_LAMP_IDLE, V_FULL, 1, 8);
     delay(30);
-    for (; j > V_LAMP_IDLE; j -= 8) {
-      leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, j);
-      FastLED.show();
-      delay(1);
-    }
+    glow_down(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_FULL, V_LAMP_IDLE, 1, -8);
     delay(15);
   }
   // ...pation
