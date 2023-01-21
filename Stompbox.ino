@@ -305,14 +305,10 @@ void scan_controls() {
 
 // ** main **
 
-/// main arduino init
-void setup() {
-
-#ifdef SERIAL_LOGGING
-  Serial.begin(57600);
-#endif
-
-  // buttons make to ground and expect internal pullups
+/// pin configuration
+void setup_pins() {
+  
+    // buttons make to ground and expect internal pullups
   for (int ii = 0; ii < NUM_BUTTONS; ii++) {
     pinMode(PIN_BUTTON[ii], INPUT_PULLUP);
   }
@@ -330,10 +326,28 @@ void setup() {
 
   // all the NeoPixel LEDs are controlled through one output pin via FastLED
   pinMode(PIN_LED_DATA, OUTPUT);
+
+}
+
+/// main arduino init
+void setup() {
+
+  // get ready for USB I/O...
+
+#ifdef SERIAL_LOGGING
+  // establish the standard arduino serial connection for debug logging
+  Serial.begin(57600);
+#endif
+
+  // get ready for control surface controls and lamps...
+  
+  setup_pins();
+
 	FastLED.addLeds<WS2812,PIN_LED_DATA,RGB>(leds,NUM_LEDS);
 	FastLED.setBrightness(LED_MASTER_BRIGHTNESS);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 500);
 
+  // make it clear to the user that the device has just been powered on or reset
   startup_lightshow();
   
 } // setup
