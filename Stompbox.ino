@@ -67,9 +67,16 @@ typedef enum button_state_e { UNPRESSED, PRESSING, PRESSED, RELEASING} button_st
 // pedal states
 typedef struct pedal_state_s {
   int value;
-  byte delta;
+  int delta;
 } pedal_state_s;
 
+// knob states
+typedef struct knob_state_s {
+  int value;
+  byte delta;
+  int codeA;
+  int codeB;
+} knob_state_s;
 // ** constants **
 
 const byte LED_MASTER_BRIGHTNESS = 127;
@@ -166,6 +173,9 @@ button_state_e button_state[NUM_BUTTONS];
 
 // current state of each pedal: current value and how far it's changed since last reading.
 pedal_state_s pedal_state[NUM_PEDALS];
+
+// current state of each knob: current value and how far it's changed since last reading, plus the raw rotary code data.
+knob_state_s knob_state[NUM_KNOBS];
 
 // ** visual display (LEDs) **
 
@@ -276,6 +286,11 @@ void init_controls() {
     pedal_state[ii].delta = 0;
   }
 
+  for (int ii = 0; ii < NUM_KNOBS; ii++) {
+    knob_state[ii].value = 0; 
+    knob_state[ii].delta = 0;
+  }
+
 }
 
 /// poll all controls once for changes
@@ -309,20 +324,34 @@ void scan_controls() {
     }
   }
 
-  String message = "Pedals: ";
-
   // pedals
   for (int ii = 0; ii < NUM_PEDALS; ii++) {
     int result = analogRead(PIN_PEDAL[ii]);
     int was = pedal_state[ii].value;
     pedal_state[ii].delta = result - was;
     pedal_state[ii].value = result;
-    message = message + ii + "(" + PIN_PEDAL[ii] + ") = " + result + "      ";
   }
 
-  log(message);
-
   // knobs
+
+  String msg = "";
+
+  for (int ii = 0; ii < NUM_KNOBS; ii++) {
+    int aa = digitalRead(PIN_ROTARY_A[ii]);
+    int bb = digitalRead(PIN_ROTARY_B[ii]);
+
+    if ((knob_state[ii].codeA != aa) || (knob_state[ii].codeB != bb)) {
+          msg = msg + ii + " = " + aa + ", " + bb + "     ";
+    }
+    knob_state[ii].codeA = aa;
+    knob_state[ii].codeB = bb;
+    
+    // @#@u decode...
+  }
+
+  if (msg.length() > 0) {
+    log(msg);
+  }
 
 }
   
