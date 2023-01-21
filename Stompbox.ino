@@ -72,10 +72,13 @@ const byte LED_MASTER_BRIGHTNESS = 127;
 const int NUM_LEDS = 6;
 
 // Record button plus five footswitch stomp buttons
-const int NUM_BUTTONS = 6;
+const int NUM_BASIC_BUTTONS = 6;
 
 // Knob and joystick push-select action: also counts as "buttons" for control scan
 const int NUM_SELECT_BUTTONS = 4;
+
+// total buttons of both kinds
+const int NUM_BUTTONS = NUM_BASIC_BUTTONS + NUM_SELECT_BUTTONS;
 
 // Three rotary encoder knobs
 const int NUM_KNOBS = 3;
@@ -85,44 +88,44 @@ const int NUM_PEDALS = 3;
 
 // arduino pin assignments...
 
-const int PIN_LED_BUILTIN = LED_BUILTIN; // arduino on-board LED. May or may not be visible in final version of hardware.
-const int PIN_LED_DATA = 14; // NeoPixel data out. Controlled via FastLED library.
-const int PIN_BUTTON_0 = A3; // 'Record' button. LED 0 illuminates the clear button itself (other buttons' LEDs are just adjacent display lamps)
-const int PIN_BUTTON_1 = 2; // footswitch button 1. (Nominally, a stomp button as found on guitar pedals. I don't like those so I'm using softer-press buttons.)
-const int PIN_BUTTON_2 = 3;
-const int PIN_BUTTON_3 = 5;
-const int PIN_BUTTON_4 = 7;
-const int PIN_BUTTON_5 = 9;
-const int ROTARY_1_A = 10; // 30-step rotary encoder knobs have A and B encoded outputs
-const int ROTARY_1_B = 11;
-const int ROTARY_2_A = 12;
-const int ROTARY_2_B = 16;
-const int ROTARY_3_A = A5;
-const int ROTARY_3_B = A4;
-const int PIN_KNOB_SELECT_1 = 4; // rotary knobs can also push-to-select, a "button" input
-const int PIN_KNOB_SELECT_2 = 6;
-const int PIN_KNOB_SELECT_3 = 8;
-const int PIN_PEDAL_X = A0; // integrated "pedal" joystick depressed left, i.e. SW (@#@?)
-const int PIN_PEDAL_Y = A1; // integrated "pedal" joystick depressed right, i.e. SE (@#@?)
-const int PIN_PEDAL_Z = A2; // external expression pedal input (note: pedal polarity may vary, software must be adjustable)
-const int PIN_PEDAL_SELECT = 15; // integrated "pedal" joystick has push-to-select button input. (may be ergonomically prone to accidental presses)
+const byte PIN_LED_BUILTIN = LED_BUILTIN; // arduino on-board LED. May or may not be visible in final version of hardware.
+const byte PIN_LED_DATA = 14; // NeoPixel data out. Controlled via FastLED library.
+const byte PIN_BUTTON_0 = A3; // 'Record' button. LED 0 illuminates the clear button itself (other buttons' LEDs are just adjacent display lamps)
+const byte PIN_BUTTON_1 = 2; // footswitch button 1. (Nominally, a stomp button as found on guitar pedals. I don't like those so I'm using softer-press buttons.)
+const byte PIN_BUTTON_2 = 3;
+const byte PIN_BUTTON_3 = 5;
+const byte PIN_BUTTON_4 = 7;
+const byte PIN_BUTTON_5 = 9;
+const byte ROTARY_1_A = 10; // 30-step rotary encoder knobs have A and B encoded outputs
+const byte ROTARY_1_B = 11;
+const byte ROTARY_2_A = 12;
+const byte ROTARY_2_B = 16;
+const byte ROTARY_3_A = A5;
+const byte ROTARY_3_B = A4;
+const byte PIN_KNOB_SELECT_1 = 4; // rotary knobs can also push-to-select, a "button" input
+const byte PIN_KNOB_SELECT_2 = 6;
+const byte PIN_KNOB_SELECT_3 = 8;
+const byte PIN_PEDAL_X = A0; // integrated "pedal" joystick depressed left, i.e. SW (@#@?)
+const byte PIN_PEDAL_Y = A1; // integrated "pedal" joystick depressed right, i.e. SE (@#@?)
+const byte PIN_PEDAL_Z = A2; // external expression pedal input (note: pedal polarity may vary, software must be adjustable)
+const byte PIN_PEDAL_SELECT = 15; // integrated "pedal" joystick has push-to-select button input. (may be ergonomically prone to accidental presses)
 
 // the same pins grouped for bulk processing...
 
-const int PIN_BUTTON[NUM_BUTTONS + NUM_SELECT_BUTTONS] = {
+const byte PIN_BUTTON[NUM_BUTTONS] = {
   PIN_BUTTON_0, PIN_BUTTON_1, PIN_BUTTON_2, PIN_BUTTON_3, PIN_BUTTON_4, PIN_BUTTON_5,
   PIN_KNOB_SELECT_1, PIN_KNOB_SELECT_2, PIN_KNOB_SELECT_3, PIN_PEDAL_SELECT
 };
 
-const int PIN_PEDAL[NUM_PEDALS] = {
+const byte PIN_PEDAL[NUM_PEDALS] = {
   PIN_PEDAL_X, PIN_PEDAL_Y, PIN_PEDAL_Z
 };
 
-const int PIN_ROTARY_A[NUM_KNOBS] = {
+const byte PIN_ROTARY_A[NUM_KNOBS] = {
   ROTARY_1_A, ROTARY_2_A, ROTARY_3_A
 };
 
-const int PIN_ROTARY_B[NUM_KNOBS] = {
+const byte PIN_ROTARY_B[NUM_KNOBS] = {
   ROTARY_1_B, ROTARY_2_B, ROTARY_3_B
 };
 
@@ -130,10 +133,10 @@ const int PIN_ROTARY_B[NUM_KNOBS] = {
 // ** logging **
 
 /// print a message over the serial I/O line...only if relevant #define is operative. No-op otherwise.
-void log(const char *) {
+void log(const char *message) {
 
 #ifdef SERIAL_LOGGING
-  Serial.println("Stompbox looping.");
+  Serial.println(message);
 #endif
 
 }
@@ -144,7 +147,7 @@ void log(const char *) {
 CRGB leds[NUM_LEDS];
 
 // current (after scan_controls) state of each button (including select press on knobs and joystick, see PIN_BUTTON for the array order)
-button_state_e button_state[NUM_BUTTONS + NUM_SELECT_BUTTONS];
+button_state_e button_state[NUM_BUTTONS];
 
 // ** visual display (LEDs) **
 
@@ -255,7 +258,17 @@ void init_controls() {
 /// poll all controls once for changes
 void scan_controls() {
 
+  // buttons
 
+  for (int ii = 0; ii < NUM_BUTTONS; ii++) {
+    
+    int result = digitalRead(PIN_BUTTON[ii]);
+    log("Scanning");
+  }
+
+  // pedals
+
+  // knobs
 
 }
   
@@ -279,7 +292,7 @@ void setup() {
 /// main arduino loop
 void loop() {
 
-  log("Stompbox looping.");
+  //log("Stompbox looping.");
  
   idle_animation();
 
