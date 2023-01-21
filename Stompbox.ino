@@ -295,7 +295,6 @@ void scan_controls() {
     }
   }
 
-  delay(100);
 
   // pedals
 
@@ -313,10 +312,23 @@ void setup() {
   Serial.begin(57600);
 #endif
 
+  // buttons make to ground and expect internal pullups
   for (int ii = 0; ii < NUM_BUTTONS; ii++) {
     pinMode(PIN_BUTTON[ii], INPUT_PULLUP);
   }
 
+  // rotary encoders have two code pins that make to ground
+  for (int ii = 0; ii < NUM_KNOBS; ii++) {
+    pinMode(PIN_ROTARY_A[ii], INPUT_PULLUP);
+    pinMode(PIN_ROTARY_B[ii], INPUT_PULLUP);
+  }
+
+  // pedals are analog inputs with their own +5v and ground connections (nominal analog range endpoints; actual results may vary)
+  for (int ii = 0; ii < NUM_PEDALS; ii++) {
+    pinMode(PIN_PEDAL, INPUT);
+  }
+
+  pinMode(PIN_LED_DATA, OUTPUT);
 
 	FastLED.addLeds<WS2812,PIN_LED_DATA,RGB>(leds,NUM_LEDS);
 	FastLED.setBrightness(LED_MASTER_BRIGHTNESS);
@@ -328,10 +340,8 @@ void setup() {
 /// main arduino loop
 void loop() {
 
-  //log("Stompbox looping.");
- 
-  idle_animation();
-
   scan_controls();
 
+  //idle_animation(); // (optional)
+ 
 } // loop
