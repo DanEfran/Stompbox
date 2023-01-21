@@ -269,16 +269,31 @@ void scan_controls() {
 
   // buttons
 
-  String answer = "Buttons:  ";
-
   for (int ii = 0; ii < NUM_BUTTONS; ii++) {
 
     int result = digitalRead(PIN_BUTTON[ii]);
-    answer = answer + ii + " = " + result + "    ";
 
+    // using internal pullup resistors and grounding buttons, so 0 = make, 1 = break
+    if (result == 0) {
+      // button is depressed
+      if (button_state[ii] == PRESSING) {
+        // caller had a chance to respond to PRESSING state after last call, so we can move on.
+        button_state[ii] = PRESSED;
+      } else if (button_state[ii] != PRESSED) {
+        // was UNPRESSED or RELEASING, not anymore
+        button_state[ii] = PRESSING;
+      }
+    } else {
+      // button is not depressed      
+      if (button_state[ii] == RELEASING) {
+        // caller had a chance to respond to RELEASING state after last call, so we can move on.
+        button_state[ii] = UNPRESSED;
+      } else if (button_state[ii] != UNPRESSED) {
+        // was PRESSING or PRESSED, not anymore        
+        button_state[ii] = RELEASING;
+      }
+    }
   }
-
-  log(answer);
 
   delay(100);
 
