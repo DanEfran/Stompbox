@@ -328,10 +328,11 @@ void setup() {
     pinMode(PIN_PEDAL, INPUT);
   }
 
+  // all the NeoPixel LEDs are controlled through one output pin via FastLED
   pinMode(PIN_LED_DATA, OUTPUT);
-
 	FastLED.addLeds<WS2812,PIN_LED_DATA,RGB>(leds,NUM_LEDS);
 	FastLED.setBrightness(LED_MASTER_BRIGHTNESS);
+  FastLED.setMaxPowerInVoltsAndMilliamps(5, 500);
 
   startup_lightshow();
   
