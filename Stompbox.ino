@@ -141,6 +141,15 @@ void log(const char *message) {
 
 }
 
+/// print a message over the serial I/O line...only if relevant #define is operative. No-op otherwise.
+void log(const String& message) {
+
+#ifdef SERIAL_LOGGING
+  Serial.println(message);
+#endif
+
+}
+
 // ** globals **
 
 // the NeoPixel LEDs (FastLED display buffer: set these and call show to update display)
@@ -260,11 +269,18 @@ void scan_controls() {
 
   // buttons
 
+  String answer = "Buttons:  ";
+
   for (int ii = 0; ii < NUM_BUTTONS; ii++) {
-    
+
     int result = digitalRead(PIN_BUTTON[ii]);
-    log("Scanning");
+    answer = answer + ii + " = " + result + "    ";
+
   }
+
+  log(answer);
+
+  delay(100);
 
   // pedals
 
@@ -281,6 +297,11 @@ void setup() {
 #ifdef SERIAL_LOGGING
   Serial.begin(57600);
 #endif
+
+  for (int ii = 0; ii < NUM_BUTTONS; ii++) {
+    pinMode(PIN_BUTTON[ii], INPUT_PULLUP);
+  }
+
 
 	FastLED.addLeds<WS2812,PIN_LED_DATA,RGB>(leds,NUM_LEDS);
 	FastLED.setBrightness(LED_MASTER_BRIGHTNESS);
