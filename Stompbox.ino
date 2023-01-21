@@ -62,7 +62,13 @@ typedef uint8_t byte;
 */
 
 // button states
-typedef enum { UNPRESSED, PRESSING, PRESSED, RELEASING} button_state_e;
+typedef enum button_state_e { UNPRESSED, PRESSING, PRESSED, RELEASING} button_state_e;
+
+// pedal states
+typedef struct pedal_state_s {
+  int value;
+  byte delta;
+} pedal_state_s;
 
 // ** constants **
 
@@ -157,6 +163,9 @@ CRGB leds[NUM_LEDS];
 
 // current (after scan_controls) state of each button (including select press on knobs and joystick, see PIN_BUTTON for the array order)
 button_state_e button_state[NUM_BUTTONS];
+
+// current state of each pedal: current value and how far it's changed since last reading.
+pedal_state_s pedal_state[NUM_PEDALS];
 
 // ** visual display (LEDs) **
 
@@ -259,7 +268,12 @@ void idle_animation() {
 void init_controls() {
 
   for (int ii = 0; ii < NUM_BUTTONS; ii++) {
-    button_state[ii] = UNPRESSED;
+    button_state[ii] = digitalRead(PIN_BUTTON[ii] == 0) ? PRESSED : UNPRESSED;
+  }
+
+  for (int ii = 0; ii < NUM_PEDALS; ii++) {
+    pedal_state[ii].value = analogRead(PIN_PEDAL[ii]);
+    pedal_state[ii].delta = 0;
   }
 
 }
@@ -295,8 +309,18 @@ void scan_controls() {
     }
   }
 
+  String message = "Pedals: ";
 
   // pedals
+  for (int ii = 0; ii < NUM_PEDALS; ii++) {
+    int result = analogRead(PIN_PEDAL[ii]);
+    int was = pedal_state[ii].value;
+    pedal_state[ii].delta = result - was;
+    pedal_state[ii].value = result;
+    message = message + ii + "(" + PIN_PEDAL[ii] + ") = " + result + "      ";
+  }
+
+  log(message);
 
   // knobs
 
@@ -339,9 +363,13 @@ void setup() {
   Serial.begin(57600);
 #endif
 
+  // @#@u OSC init goes here
+
   // get ready for control surface controls and lamps...
-  
+
   setup_pins();
+  
+  init_controls();
 
 	FastLED.addLeds<WS2812,PIN_LED_DATA,RGB>(leds,NUM_LEDS);
 	FastLED.setBrightness(LED_MASTER_BRIGHTNESS);
@@ -360,3 +388,6 @@ void loop() {
   //idle_animation(); // (optional)
  
 } // loop
+
+
+// EOF.
