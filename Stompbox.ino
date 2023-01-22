@@ -77,6 +77,7 @@ typedef struct knob_state_s {
   int codeA;
   int codeB;
   int direction;
+  bool changed;
 } knob_state_s;
 // ** constants **
 
@@ -288,24 +289,31 @@ void handleKnobChange(int ii) {
 
   // code A has changed. 
   // if code B is the same as A, knob is turning in one direction; if different, the other direction. actually pretty simple.
+
   int aa = digitalRead(PIN_ROTARY_A[ii]);
   int bb = digitalRead(PIN_ROTARY_B[ii]);
 
   int direction = (aa == bb) ? -1 : 1;
 
-  if (direction == knob_state[ii].direction) {
-    knob_state[ii].delta = direction;
-    knob_state[ii].value += knob_state[ii].delta;
-  }
+  knob_state[ii].delta += direction; // @#@? should this use += or = ? How will it be used? Will user consume/reset it? Too soon to tell...
+  knob_state[ii].value += direction;
+  knob_state[ii].changed = true;
+  
   
   knob_state[ii].direction = direction;
+
   knob_state[ii].codeA = aa;
   knob_state[ii].codeB = bb;
 
-  String msg = "handleKnobChange ";
-  msg = msg + ii + " dir " + direction + " value " + knob_state[ii].value;
-  log(msg);
+}
 
+void consumeKnobChanges(int ii, bool resetValue = false) {
+  
+  knob_state[ii].delta = 0;
+  knob_state[ii].changed = false;
+  if (resetValue) {
+    knob_state[ii].value = 0;
+  }
 }
 
 /// set up data structures for control inputs
@@ -323,11 +331,15 @@ void init_controls() {
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
     knob_state[ii].value = 0; 
     knob_state[ii].delta = 0;
+    knob_state[ii].codeA = digitalRead(PIN_ROTARY_A[ii]);
+    knob_state[ii].codeB = digitalRead(PIN_ROTARY_B[ii]);
+    knob_state[ii].direction = (knob_state[ii].codeA == knob_state[ii].codeB) ? -1 : 1;
+    knob_state[ii].changed = false;
   }
 
-//  attachInterrupt( digitalPinToInterrupt(PIN_ROTARY_A[0]),	handleRotaryInterrupt0, CHANGE);
-//  attachInterrupt( digitalPinToInterrupt(PIN_ROTARY_A[1]),	handleRotaryInterrupt1, CHANGE);
-//  attachInterrupt( digitalPinToInterrupt(PIN_ROTARY_A[2]),	handleRotaryInterrupt2, CHANGE);
+  attachInterrupt( digitalPinToInterrupt(PIN_ROTARY_A[0]),	handleRotaryInterrupt0, CHANGE);
+  attachInterrupt( digitalPinToInterrupt(PIN_ROTARY_A[1]),	handleRotaryInterrupt1, CHANGE);
+  attachInterrupt( digitalPinToInterrupt(PIN_ROTARY_A[2]),	handleRotaryInterrupt2, CHANGE);
  
 } // init_controls
 
@@ -373,21 +385,30 @@ void scan_controls() {
   // knobs
 
   String msg = "";
+	
+//  byte oldSREG = SREG; // save interrupts status (on or off; likely on)
+//	noInterrupts(); // protect event buffer integrity
+
+  bool anyChanged = false;
 
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
     
-    // this will be interrupt-driven soon
-    int aa = digitalRead(PIN_ROTARY_A[ii]);
-    if (knob_state[ii].codeA != aa) {
+    msg = msg + "knob " + ii + ": " + knob_state[ii].value;
+    msg = msg + "   delta " + knob_state[ii].delta;
+    msg = msg + "   direction " + knob_state[ii].direction;
+    msg = msg + "   ";
 
-      handleKnobChange(ii);
+    anyChanged = anyChanged || knob_state[ii].changed;    
+    
+    consumeKnobChanges(ii);
 
-    }    
   }
 
-  if (msg.length() > 0) {
+  if (anyChanged) {
     log(msg);
   }
+
+//  SREG = oldSREG; // restore interrupts status
 
 }
   
