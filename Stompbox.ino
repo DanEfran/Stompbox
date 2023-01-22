@@ -400,6 +400,7 @@ void scanControls() {
   for (int ii = 0; ii < NUM_BUTTONS; ii++) {
 
     int result = digitalRead(PIN_BUTTON[ii]);
+    int was = button_state[ii];
 
     // using internal pullup resistors and grounding buttons, so 0 = make, 1 = break
     if (result == 0) {
@@ -421,6 +422,12 @@ void scanControls() {
         button_state[ii] = RELEASING;
       }
     }
+
+    if (button_state[ii] != was) {
+      String msg = "button ";
+      msg = msg + ii + ": " + button_state[ii];
+      log(msg);
+    }
   }
 
   // pedals
@@ -429,6 +436,13 @@ void scanControls() {
     int was = pedal_state[ii].value;
     pedal_state[ii].delta = result - was;
     pedal_state[ii].value = result;
+
+    // @#@t debounced log
+    if (abs(result - was) > 5) {
+      String msg = "pedal ";
+      msg = msg + ii + ": " + result;
+      log (msg);
+    }
   }
 
   // knobs
