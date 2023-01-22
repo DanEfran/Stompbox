@@ -46,7 +46,7 @@
 */
 
 // how much output to terminal window? 0 = silent running, 1 = user, 2 = power user, 3 = debug
-let verbose = 1;
+let verbose = 2;
 
 let comName;
 // comName = '/dev/ttyUSB0'; // Uncomment this line to select a specific port instead of searching for an Arduino.
@@ -81,12 +81,12 @@ server.on('error', (err) => {
 
 server.on('message', (message, rinfo) => {
 	
-	if (verbose >= 1) {
-		console.log(message.toString()); // @#@#@
-	}
-	if (verbose >= 2) {
+	if (verbose >= 3) {
 		console.log(`>>> ${message.join(' ')} (${rinfo.address}:${rinfo.port})`);
+	} else if (verbose >= 2) {
+		console.log(`>>> ${message.toString()}\n`); // @#@#@
 	}
+
 	
     remoteAddr = rinfo.address;
     sendSerial(message);
@@ -106,13 +106,12 @@ server.bind(localPort);
 
 function sendUDP(message) {
 	
-	if (verbose >= 1) {
-		console.log(message.toString()); // @#@#@
-	}
-	if (verbose >= 2) {
+	if (verbose >= 3) {
 		console.log(`<<< ${message.join(' ')} (${remoteAddr}:${remotePort})`);
+	} else if (verbose >= 2) {
+		console.log(`<<< ${message.toString()}\n`); // @#@#@
 	}
-	
+
     server.send(
         message, remotePort, remoteAddr,
         (err) => { if (err) console.error(`Unable to send UDP packet: ${err}`); }
@@ -223,14 +222,16 @@ function receiveSerial(dataBuf) {
         }
     }
 	
-	if (verbose >= 1) {
+	if (verbose >= 3) {
 		console.log('receiveSerial: length ' + dataBuf.length);
 	}
-	if (verbose >= 2) {
+	if (verbose >= 3) {
 		for (let ii = 0; ii < dataBuf.length; ii++) {
 			console.log('data: ' + dataBuf[ii]);
 		}
+		console.log('');
 	}
+	
 }
 
 const encoder = new SLIP.SLIPEncoder;
@@ -243,7 +244,7 @@ function sendSerial(dataBuf) {
     // Send the encoded data over the Serial port
     port.write(out);
 
-	if (verbose >= 1) {
+	if (verbose >= 3) {
 		console.log('sendSerial');
 	}
 }
