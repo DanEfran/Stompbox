@@ -55,6 +55,8 @@ RST (Reset button is connected to reset pin.)
 // I hate typing uint8_t
 typedef uint8_t byte; 
 
+typedef unsigned long time_ms;
+
 /* 
   Note: We will mostly use buttons as toggle triggers, toggling a controlled value exactly when pressed,
   but we may also use buttons as momentary switches, setting a controlled value when pressed and clearing it when released.
@@ -193,7 +195,7 @@ const byte S_VINTAGE_LAMP = 200;
 const byte S_FULL = 255;
 
 /// brighten or darken an LED
-void glow_change(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step) {
+void glowChange(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step) {
 
   if (change_step == 0) {
     leds[led] = CHSV(hue, sat, val_to);
@@ -209,17 +211,17 @@ void glow_change(int led, byte hue, byte sat, byte val_from, byte val_to, int sl
 }
 
 /// brighten an LED
-void glow_up(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step = 1) {
-  glow_change(led, hue, sat, val_from, val_to, slowness, change_step);
+void glowUp(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step = 1) {
+  glowChange(led, hue, sat, val_from, val_to, slowness, change_step);
 }
 
 /// darken an LED
-void glow_down(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step = -1) {
-  glow_change(led, hue, sat, val_from, val_to, slowness, change_step);
+void glowDown(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step = -1) {
+  glowChange(led, hue, sat, val_from, val_to, slowness, change_step);
 }
 
 /// startup lamp test, indicating start of program after power-up or reset
-void startup_lightshow() {
+void startupLightshow() {
 
   // begin dark
   leds[0] = CHSV(H_RED, S_FULL, V_OFF);
@@ -230,22 +232,22 @@ void startup_lightshow() {
 
   // each lamp glows on
   for (int i = 1; i < NUM_LEDS; i++) {
-    glow_up(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_OFF, V_LAMP_IDLE, 2);
+    glowUp(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_OFF, V_LAMP_IDLE, 2);
   }
 
   // record light glows quite bright...
-  glow_up(0, H_RED, S_FULL, V_OFF, V_FULL, 3);
+  glowUp(0, H_RED, S_FULL, V_OFF, V_FULL, 3);
   delay(300);
 
   // ...then dims to idle
-  glow_down(0, H_RED, S_FULL, V_FULL, V_RECORD_IDLE, 4);
+  glowDown(0, H_RED, S_FULL, V_FULL, V_RECORD_IDLE, 4);
   delay(700);
 
   // lamps each sparkle in antici...
   for (int i = 1; i < NUM_LEDS; i++) {
-    glow_up(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_LAMP_IDLE, V_FULL, 1, 8);
+    glowUp(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_LAMP_IDLE, V_FULL, 1, 8);
     delay(30);
-    glow_down(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_FULL, V_LAMP_IDLE, 1, -8);
+    glowDown(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_FULL, V_LAMP_IDLE, 1, -8);
     delay(15);
   }
   // ...pation
@@ -253,7 +255,7 @@ void startup_lightshow() {
 }
 
 /// optional idle animation. proof of concept. might be useful when debugging to show program is still running
-void idle_animation() {
+void idleAnimation() {
 
   static long tt = 0;
 
@@ -263,9 +265,9 @@ void idle_animation() {
 
   // lamps each sparkle in antici...
   for (int i = 1; i < NUM_LEDS; i++) {
-    glow_up(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_LAMP_IDLE, V_FULL, 1, 8);
+    glowUp(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_LAMP_IDLE, V_FULL, 1, 8);
     delay(30);
-    glow_down(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_FULL, V_LAMP_IDLE, 1, -8);
+    glowDown(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_FULL, V_LAMP_IDLE, 1, -8);
     delay(15);
   }
   // ...pation
@@ -276,13 +278,60 @@ void idle_animation() {
 // ** controls **
 
 void handleRotaryInterrupt0() {
+
+  static time_ms previous = millis();
+  time_ms current = millis();
+  if (current < previous) {
+    // fix up (very rare) wraparound
+    previous = current;
+  }
+
+  if (current - previous < 1) {
+    // debounce by ignoring unrealistically rapid changes
+    return;
+  }
+
+  // reset debounce timer
+  previous = current;
+
   handleKnobChange(0);
+
 }
+
 void handleRotaryInterrupt1() {
+  
+  static time_ms previous = millis();
+  time_ms current = millis();
+  if (current < previous) {
+    previous = current - 1;
+  }
+
+  if (current - previous < 1) {
+    return;
+  }
+
+  previous = current;
+  
   handleKnobChange(1);
+
 }
+
 void handleRotaryInterrupt2() {
+  
+  static time_ms previous = millis();
+  time_ms current = millis();
+  if (current < previous) {
+    previous = current - 1;
+  }
+
+  if (current - previous < 1) {
+    return;
+  }
+
+  previous = current;
+
   handleKnobChange(2);
+
 }
 
 void handleKnobChange(int ii) {
@@ -317,7 +366,7 @@ void consumeKnobChanges(int ii, bool resetValue = false) {
 }
 
 /// set up data structures for control inputs
-void init_controls() {
+void initControls() {
 
   for (int ii = 0; ii < NUM_BUTTONS; ii++) {
     button_state[ii] = digitalRead(PIN_BUTTON[ii] == 0) ? PRESSED : UNPRESSED;
@@ -344,7 +393,7 @@ void init_controls() {
 } // init_controls
 
 /// poll all controls once for changes
-void scan_controls() {
+void scanControls() {
 
   // buttons
 
@@ -416,7 +465,7 @@ void scan_controls() {
 // ** main **
 
 /// pin configuration
-void setup_pins() {
+void setupPins() {
   
     // buttons make to ground and expect internal pullups
   for (int ii = 0; ii < NUM_BUTTONS; ii++) {
@@ -453,25 +502,25 @@ void setup() {
 
   // get ready for control surface controls and lamps...
 
-  setup_pins();
+  setupPins();
   
-  init_controls();
+  initControls();
 
 	FastLED.addLeds<WS2812,PIN_LED_DATA,RGB>(leds,NUM_LEDS);
 	FastLED.setBrightness(LED_MASTER_BRIGHTNESS);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 500);
 
   // make it clear to the user that the device has just been powered on or reset
-  startup_lightshow();
+  startupLightshow();
   
 } // setup
 
 /// main arduino loop
 void loop() {
 
-  scan_controls();
+  scanControls();
 
-  //idle_animation(); // (optional)
+  //idleAnimation(); // (optional)
  
 } // loop
 
