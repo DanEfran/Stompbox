@@ -17,17 +17,17 @@ Arduino Device: Adafruit ItsyBitsy 32u4
 Pinout:
 0 N/C (reserved for USB serial)
 1 N/C (reserved for USB serial)
-2 Button 1
-3 Button 2
+2 Rotary 1 A
+3 Rotary 2 A
 4 Knob 1 select button
 5 Button 3
 6 Knob 2 select button
-7 Button 4
+7 Rotary 3 A
 8 Knob 3 select button
 9 Button 5
-10 Rotary 1 A
+10 Button 1
 11 Rotary 1 B
-12 Rotary 2 A
+12 Button 2
 13 N/C (LED_BUILTIN)
 14 (MISO) LED Data
 15 (SCK) Joystick select button
@@ -36,8 +36,8 @@ A0 Joystick analog X
 A1 Joystick analog Y
 A2 External Pedal analog Z
 A3 Button 0 (record button)
-A4 Rotary 3 B
-A5 Rotary 3 A
+A4 Button 4
+A5 Rotary 3 B
 RST (Reset button is connected to reset pin.)
 
 */
@@ -73,9 +73,10 @@ typedef struct pedal_state_s {
 // knob states
 typedef struct knob_state_s {
   int value;
-  byte delta;
+  int delta;
   int codeA;
   int codeB;
+  int direction;
 } knob_state_s;
 // ** constants **
 
@@ -104,17 +105,17 @@ const int NUM_PEDALS = 3;
 const byte PIN_LED_BUILTIN = LED_BUILTIN; // arduino on-board LED. May or may not be visible in final version of hardware.
 const byte PIN_LED_DATA = 14; // NeoPixel data out. Controlled via FastLED library.
 const byte PIN_BUTTON_0 = A3; // 'Record' button. LED 0 illuminates the clear button itself (other buttons' LEDs are just adjacent display lamps)
-const byte PIN_BUTTON_1 = 2; // footswitch button 1. (Nominally, a stomp button as found on guitar pedals. I don't like those so I'm using softer-press buttons.)
-const byte PIN_BUTTON_2 = 3;
+const byte PIN_BUTTON_1 = 10; // footswitch button 1. (Nominally, a stomp button as found on guitar pedals. I don't like those so I'm using softer-press buttons.)
+const byte PIN_BUTTON_2 = 12;
 const byte PIN_BUTTON_3 = 5;
-const byte PIN_BUTTON_4 = 7;
+const byte PIN_BUTTON_4 = A4;
 const byte PIN_BUTTON_5 = 9;
-const byte ROTARY_1_A = 10; // 30-step rotary encoder knobs have A and B encoded outputs
+const byte ROTARY_1_A = 2; // 30-step rotary encoder knobs have A and B encoded outputs
 const byte ROTARY_1_B = 11;
-const byte ROTARY_2_A = 12;
+const byte ROTARY_2_A = 3; // pins 2, 3, and 7 are interrupt-capable; we use them for Rotary 1/2/3 Code A.
 const byte ROTARY_2_B = 16;
-const byte ROTARY_3_A = A5;
-const byte ROTARY_3_B = A4;
+const byte ROTARY_3_A = 7;
+const byte ROTARY_3_B = A5;
 const byte PIN_KNOB_SELECT_1 = 4; // rotary knobs can also push-to-select, a "button" input
 const byte PIN_KNOB_SELECT_2 = 6;
 const byte PIN_KNOB_SELECT_3 = 8;
@@ -273,6 +274,39 @@ void idle_animation() {
 
 // ** controls **
 
+void handleRotaryInterrupt0() {
+  handleKnobChange(0);
+}
+void handleRotaryInterrupt1() {
+  handleKnobChange(1);
+}
+void handleRotaryInterrupt2() {
+  handleKnobChange(2);
+}
+
+void handleKnobChange(int ii) {
+
+  // code A has changed. 
+  // if code B is the same as A, knob is turning in one direction; if different, the other direction. actually pretty simple.
+  int aa = digitalRead(PIN_ROTARY_A[ii]);
+  int bb = digitalRead(PIN_ROTARY_B[ii]);
+
+  int direction = (aa == bb) ? -1 : 1;
+
+  if (direction == knob_state[ii].direction) {
+    knob_state[ii].delta = direction;
+    knob_state[ii].value += knob_state[ii].delta;
+  }
+  
+  knob_state[ii].direction = direction;
+  knob_state[ii].codeA = aa;
+  knob_state[ii].codeB = bb;
+
+  String msg = "handleKnobChange ";
+  msg = msg + ii + " dir " + direction + " value " + knob_state[ii].value;
+  log(msg);
+
+}
 
 /// set up data structures for control inputs
 void init_controls() {
@@ -291,7 +325,11 @@ void init_controls() {
     knob_state[ii].delta = 0;
   }
 
-}
+//  attachInterrupt( digitalPinToInterrupt(PIN_ROTARY_A[0]),	handleRotaryInterrupt0, CHANGE);
+//  attachInterrupt( digitalPinToInterrupt(PIN_ROTARY_A[1]),	handleRotaryInterrupt1, CHANGE);
+//  attachInterrupt( digitalPinToInterrupt(PIN_ROTARY_A[2]),	handleRotaryInterrupt2, CHANGE);
+ 
+} // init_controls
 
 /// poll all controls once for changes
 void scan_controls() {
@@ -337,16 +375,14 @@ void scan_controls() {
   String msg = "";
 
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
-    int aa = digitalRead(PIN_ROTARY_A[ii]);
-    int bb = digitalRead(PIN_ROTARY_B[ii]);
-
-    if ((knob_state[ii].codeA != aa) || (knob_state[ii].codeB != bb)) {
-          msg = msg + ii + " = " + aa + ", " + bb + "     ";
-    }
-    knob_state[ii].codeA = aa;
-    knob_state[ii].codeB = bb;
     
-    // @#@u decode...
+    // this will be interrupt-driven soon
+    int aa = digitalRead(PIN_ROTARY_A[ii]);
+    if (knob_state[ii].codeA != aa) {
+
+      handleKnobChange(ii);
+
+    }    
   }
 
   if (msg.length() > 0) {
