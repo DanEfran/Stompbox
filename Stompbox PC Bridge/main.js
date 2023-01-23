@@ -46,7 +46,7 @@
 */
 
 // how much output to terminal window? 0 = silent running, 1 = user, 2 = power user, 3 = debug
-let verbose = 3;
+let verbose = 2;
 
 let comName;
 // comName = '/dev/ttyUSB0'; // Uncomment this line to select a specific port instead of searching for an Arduino.
@@ -81,6 +81,9 @@ server.on('error', (err) => {
 
 server.on('message', (message, rinfo) => {
 	
+    remoteAddr = rinfo.address;
+    sendSerial(message);
+
 	if (verbose >= 3) {
 		console.log(`>>> ${message.join(' ')} (${rinfo.address}:${rinfo.port})`);
 	} else if (verbose >= 2) {
@@ -90,12 +93,13 @@ server.on('message', (message, rinfo) => {
 	}
 
 	
-    remoteAddr = rinfo.address;
-    sendSerial(message);
+
 });
 
 server.on('listening', () => {
+	
     const address = server.address();
+	
 	if (verbose >= 2) {
 		console.log(``);
 		console.log(`- Server listening on port ${address.port}`);
@@ -108,6 +112,11 @@ server.bind(localPort);
 
 function sendUDP(message) {
 	
+    server.send(
+        message, remotePort, remoteAddr,
+        (err) => { if (err) console.error(`Unable to send UDP packet: ${err}`); }
+    );
+	
 	if (verbose >= 3) {
 		console.log(`<<< ${message.join(' ')} (${remoteAddr}:${remotePort})`);
 	} else if (verbose >= 2) {
@@ -116,10 +125,6 @@ function sendUDP(message) {
 		console.log('<');
 	}
 
-    server.send(
-        message, remotePort, remoteAddr,
-        (err) => { if (err) console.error(`Unable to send UDP packet: ${err}`); }
-    );
 }
 
 //#endregion
