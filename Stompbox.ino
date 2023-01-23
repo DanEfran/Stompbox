@@ -42,13 +42,29 @@ RST (Reset button is connected to reset pin.)
 
 */
 
-// ** compiler **
-
-#define SERIAL_LOGGING
-
 // ** include ** 
 
+// NeoPixel support
 #include <FastLED.h>
+
+// OSC support
+
+#include <OSCBundle.h>
+// Note: OSC's clockless_trinket.h has a "#define DONE" that conflicts with other library code; I've renamed it to ASM_DONE
+#include <OSCBoards.h>
+
+// OSC-over-USB support
+#ifdef BOARD_HAS_USB_SERIAL
+#include <SLIPEncodedUSBSerial.h>
+SLIPEncodedUSBSerial SLIPSerial( thisBoardsSerialUSB );
+#else
+#include <SLIPEncodedSerial.h>
+SLIPEncodedSerial SLIPSerial(Serial);
+#endif
+
+// old-school Serial Monitor logging, only if absolutely necessary. DISABLE the SLIP support above if using it, or else one or the other won't work.
+//#define SERIAL_LOGGING
+
 
 // ** types **
 
@@ -439,9 +455,7 @@ void scanControls() {
 
     // @#@t debounced log
     if (abs(result - was) > 5) {
-      String msg = "pedal ";
-      msg = msg + ii + ": " + result;
-      log (msg);
+      sendMasterVolume();
     }
   }
 
@@ -475,6 +489,52 @@ void scanControls() {
 
 }
   
+// ** OSC **
+
+void listenForOSC() {
+
+  static OSCBundle *bundleIN = new OSCBundle; // See https://github.com/CNMAT/OSC/issues/87
+  bool eot =  SLIPSerial.endofPacket();
+  while (SLIPSerial.available() && !eot) {
+    uint8_t data = SLIPSerial.read();
+    bundleIN->fill(data);
+    eot =  SLIPSerial.endofPacket();
+  }
+  if (eot) {
+    if (!bundleIN->hasError()) {
+      digitalWrite(LED_BUILTIN, 1);
+      delay(100);
+      digitalWrite(LED_BUILTIN, 0);
+      // @#@#@t
+      //bundleIN->dispatch("/track/*/mute", muteHandler);
+    }
+    delete bundleIN;
+    bundleIN = new OSCBundle;
+  }
+}
+
+void sendMasterVolume() {
+  // @#@t
+  //static EMA<2, int16_t> ema;
+  //static Hysteresis hyst;
+  static uint8_t prevValue = 0xFF;
+
+  uint16_t raw = analogRead(A2); // external pedal
+  //uint16_t filtered = ema.filter(raw);
+  //uint8_t value = hyst.getOutputLevel(filtered);
+  byte value = raw >> 2;
+  
+  if (value != prevValue) {
+    OSCMessage msg("/master/volume");
+    msg.add((float)value / 127.0);
+    SLIPSerial.beginPacket();
+    msg.send(SLIPSerial); // send the bytes to the SLIP stream
+    SLIPSerial.endPacket(); // mark the end of the OSC Packet
+    msg.empty(); // free space occupied by message
+    prevValue = value;
+  }
+}
+
 
 // ** main **
 
@@ -494,11 +554,14 @@ void setupPins() {
 
   // pedals are analog inputs with their own +5v and ground connections (nominal analog range endpoints; actual results may vary)
   for (int ii = 0; ii < NUM_PEDALS; ii++) {
-    pinMode(PIN_PEDAL, INPUT);
+    pinMode(PIN_PEDAL[ii], INPUT);
   }
 
   // all the NeoPixel LEDs are controlled through one output pin via FastLED
   pinMode(PIN_LED_DATA, OUTPUT);
+
+  // ...except the "reset light" which mirrors the built-in LED on pin 13
+  pinMode(PIN_LED_BUILTIN, OUTPUT);
 
 }
 
@@ -509,10 +572,11 @@ void setup() {
 
 #ifdef SERIAL_LOGGING
   // establish the standard arduino serial connection for debug logging
+  // (Note: for extreme debugging only; not available when OSC is in use.)
   Serial.begin(57600);
 #endif
 
-  // @#@u OSC init goes here
+  SLIPSerial.begin(115200);
 
   // get ready for control surface controls and lamps...
 
@@ -534,7 +598,9 @@ void loop() {
 
   scanControls();
 
-  //idleAnimation(); // (optional)
+  listenForOSC();
+
+  idleAnimation(); // (optional)
  
 } // loop
 

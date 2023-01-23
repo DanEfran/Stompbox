@@ -46,7 +46,7 @@
 */
 
 // how much output to terminal window? 0 = silent running, 1 = user, 2 = power user, 3 = debug
-let verbose = 2;
+let verbose = 3;
 
 let comName;
 // comName = '/dev/ttyUSB0'; // Uncomment this line to select a specific port instead of searching for an Arduino.
@@ -85,6 +85,8 @@ server.on('message', (message, rinfo) => {
 		console.log(`>>> ${message.join(' ')} (${rinfo.address}:${rinfo.port})`);
 	} else if (verbose >= 2) {
 		console.log(`>>> ${message.toString()}\n`); // @#@#@
+	} else if (verbose >= 1) {
+		console.log('>');
 	}
 
 	
@@ -110,6 +112,8 @@ function sendUDP(message) {
 		console.log(`<<< ${message.join(' ')} (${remoteAddr}:${remotePort})`);
 	} else if (verbose >= 2) {
 		console.log(`<<< ${message.toString()}\n`); // @#@#@
+	} else if (verbose >= 1) {
+		console.log('<');
 	}
 
     server.send(
@@ -157,8 +161,12 @@ if (comName) {
 				// in any case I may have multiple arduino devices connected at times
 				// so I just cheat and scan for my specific device by hardcoded serial number.
 				let foundArduino = (
-					port.serialNumber.match(/(?:.*2633961F.*)/) 
-					
+					( port.manufacturer
+						&& port.manufacturer.match(/(?:.*Teensy.*)|(?:.*Arduino.*)/) 
+					) || (
+					  port.friendlyName
+						&& port.friendlyName.match(/(?:.*CP210x.*)/)
+					)
 				)
 					
 				if (foundArduino) {
@@ -170,6 +178,7 @@ if (comName) {
 							console.log('\t\t' + port.pnpId);
 							console.log('\t\t' + port.manufacturer);
 							console.log('\t\t' + port.friendlyName);
+							console.log('\t\t' + port.serialNumber);
 						}
 					}
 					return true;
