@@ -274,13 +274,14 @@ void startupLightshow() {
 void idleAnimation() {
 
   // periodically...
-  static long tt = 0;
-  const long idle_cycle = 5000; // @#@t counting loops not ms, kinda crude technique. 5000 loops seems to be about 12 sec for now; may change.
-  tt++;
-  if (tt < 5000) {
+  const time_ms time_between_sparkle_waves = 9000;
+  static time_ms was = millis();
+  time_ms now = millis();
+  long since = now - was;
+  if (since < time_between_sparkle_waves) {
     return;
   }
-  tt = 0;
+  was = now;
 
   // lamps each sparkle in antici...
   for (int i = 1; i < NUM_LEDS; i++) {
@@ -296,6 +297,7 @@ void idleAnimation() {
 
 // ** controls **
 
+// rotary encoder 1A interrupt handler
 void handleRotaryInterrupt0() {
 
   static time_ms previous = millis();
@@ -317,6 +319,7 @@ void handleRotaryInterrupt0() {
 
 }
 
+// rotary encoder 2A interrupt handler
 void handleRotaryInterrupt1() {
   
   static time_ms previous = millis();
@@ -335,6 +338,7 @@ void handleRotaryInterrupt1() {
 
 }
 
+// rotary encoder 3A interrupt handler
 void handleRotaryInterrupt2() {
   
   static time_ms previous = millis();
@@ -353,6 +357,7 @@ void handleRotaryInterrupt2() {
 
 }
 
+/// a rotary encoder has been turned. record the change in value.
 void handleKnobChange(int ii) {
 
   // code A has changed. 
@@ -363,7 +368,9 @@ void handleKnobChange(int ii) {
 
   int direction = (aa == bb) ? -1 : 1;
 
-  knob_state[ii].delta += direction; // @#@? should this use += or = ? How will it be used? Will user consume/reset it? Too soon to tell...
+  // changes are interrupt-driven and thus can arrive faster than once (per knob) per loop tick.
+  // here we accumulate changes until loop consumes them.
+  knob_state[ii].delta += direction;
   knob_state[ii].value += direction;
   knob_state[ii].changed = true;
   
@@ -375,6 +382,7 @@ void handleKnobChange(int ii) {
 
 }
 
+/// when loop has read and acted on knob states, we reset knob state members 'delta', 'changed', and optionally (not usually) 'value'
 void consumeKnobChanges(int ii, bool resetValue = false) {
   
   knob_state[ii].delta = 0;
@@ -456,7 +464,7 @@ void scanControls() {
     pedal_state[ii].delta = result - was;
     pedal_state[ii].value = result;
 
-    // @#@t debounced log
+    // @#@t crudely debounced
     if (abs(result - was) > 5) {
       sendMasterVolume();
     }
@@ -494,6 +502,12 @@ void scanControls() {
   
 // ** OSC **
 
+/// handle the contents of an incoming OSC bundle
+void dispatchBundleContents(OSCBundle *bundleIN) {
+  //bundleIN->dispatch("/track/*/mute", muteHandler);
+}
+
+// receive and dispatch OSC bundles
 void listenForOSC() {
 
   static OSCBundle *bundleIN = new OSCBundle; // See https://github.com/CNMAT/OSC/issues/87
@@ -508,14 +522,14 @@ void listenForOSC() {
       digitalWrite(LED_BUILTIN, 1);
       delay(100);
       digitalWrite(LED_BUILTIN, 0);
-      // @#@#@t
-      //bundleIN->dispatch("/track/*/mute", muteHandler);
+      dispatchBundleContents(bundleIN);
     }
     delete bundleIN;
     bundleIN = new OSCBundle;
   }
 }
 
+/// send a simple OSC message. Proof of concept: send external pedal as master volume. (It's easy to see and even hear if we're transmitting OSC properly.)
 void sendMasterVolume() {
   // @#@t
   //static EMA<2, int16_t> ema;
