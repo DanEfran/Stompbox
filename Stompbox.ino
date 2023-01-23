@@ -294,10 +294,17 @@ void idleAnimation() {
 
 }
 
+/// quickly flash the built-in ('reset') LED. Intended as a debugging tool.
+void flashBuiltInLED()
+{ 
+  digitalWrite(LED_BUILTIN, 1);
+  delay(50);
+  digitalWrite(LED_BUILTIN, 0);
+}
 
 // ** controls **
 
-// rotary encoder 1A interrupt handler
+/// rotary encoder 1A interrupt handler
 void handleRotaryInterrupt0() {
 
   static time_ms previous = millis();
@@ -319,7 +326,7 @@ void handleRotaryInterrupt0() {
 
 }
 
-// rotary encoder 2A interrupt handler
+/// rotary encoder 2A interrupt handler
 void handleRotaryInterrupt1() {
   
   static time_ms previous = millis();
@@ -338,7 +345,7 @@ void handleRotaryInterrupt1() {
 
 }
 
-// rotary encoder 3A interrupt handler
+/// rotary encoder 3A interrupt handler
 void handleRotaryInterrupt2() {
   
   static time_ms previous = millis();
@@ -519,10 +526,11 @@ void listenForOSC() {
   }
   if (eot) {
     if (!bundleIN->hasError()) {
-      digitalWrite(LED_BUILTIN, 1);
-      delay(100);
-      digitalWrite(LED_BUILTIN, 0);
+
+      flashBuiltInLED();
+
       dispatchBundleContents(bundleIN);
+
     }
     delete bundleIN;
     bundleIN = new OSCBundle;
