@@ -270,14 +270,17 @@ void startupLightshow() {
 
 }
 
-/// optional idle animation. proof of concept. might be useful when debugging to show program is still running
+/// optional idle animation. proof of concept. useful when debugging to show program is still running
 void idleAnimation() {
 
+  // periodically...
   static long tt = 0;
-
-  if (0 != ++tt % 50000) {
+  const long idle_cycle = 5000; // @#@t counting loops not ms, kinda crude technique. 5000 loops seems to be about 12 sec for now; may change.
+  tt++;
+  if (tt < 5000) {
     return;
-   }
+  }
+  tt = 0;
 
   // lamps each sparkle in antici...
   for (int i = 1; i < NUM_LEDS; i++) {
