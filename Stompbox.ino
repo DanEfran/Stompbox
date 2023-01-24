@@ -494,10 +494,7 @@ void scanControls() {
   
 // ** OSC **
 
-/// handle the contents of an incoming OSC bundle
-void dispatchBundleContents(OSCBundle *bundleIN) {
-  //bundleIN->dispatch("/track/*/mute", muteHandler);
-}
+// Receive OSC messages...
 
 // receive and dispatch OSC bundles
 void listenForOSC() {
@@ -521,6 +518,13 @@ void listenForOSC() {
     bundleIN = new OSCBundle;
   }
 }
+
+/// handle the contents of an incoming OSC bundle
+void dispatchBundleContents(OSCBundle *bundleIN) {
+  //bundleIN->dispatch("/track/*/mute", muteHandler);
+}
+
+// Send OSC messages...
 
 /// send an OSC message to a specified OSC address, containing a single specified float parameter value
 void sendOSCFloat(const char *address, float value) {
