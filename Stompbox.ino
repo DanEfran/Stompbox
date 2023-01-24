@@ -419,7 +419,14 @@ void scanControls() {
     }
 
     if (button_state[ii] != was) {
-       // @#@#@ handler
+       
+       if (ii == 0) {
+         // record button
+         if (button_state[ii] == PRESSING) {
+           sendRecordToggle();
+         }
+       }
+
     }
   }
 
@@ -505,6 +512,19 @@ void sendOSCFloat(const char *address, float value) {
     msg.add(value);
     sendOSCMessage(msg);
     
+}
+
+void sendOSCTrigger(const char *address) {
+  
+  OSCMessage msg(address);
+  sendOSCMessage(msg);
+
+}
+
+void sendRecordToggle() {
+
+  sendOSCTrigger("/record");
+
 }
 
 /// send a simple OSC message. Proof of concept: send external pedal as master volume. (It's easy to see and even hear if we're transmitting OSC properly.)
