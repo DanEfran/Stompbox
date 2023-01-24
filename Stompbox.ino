@@ -509,7 +509,8 @@ void sendMasterVolume(uint16_t raw) {
   // debounce to protect serial connection
   // if we send these messages too fast, we crash the serial connection (error 31 in the node.js bridge) or even crash/freeze the arduino (somehow???)
   // so we throttle these to send no more often that about 5 or 10 ms. 
-  // (Adjust to taste for your risk tolerance; the absolute minimum without problems in a simple test seems to be about 4 or 5 ms.)
+  // (Adjust to taste for your risk tolerance; the absolute minimum without problems in a simple test seems to be about 4 or 5 ms.
+  //  Crashes are nearly immediate at 1 or 0. 5 might be safe enough but 10 seems safer. Perhaps larger message bundles will need more time?)
   const time_ms minimum_time_between_sends = 10;
   static time_ms previous = millis();
   time_ms current = millis();
