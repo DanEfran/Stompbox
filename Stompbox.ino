@@ -275,13 +275,13 @@ void idleAnimation() {
 
   // periodically...
   const time_ms time_between_sparkle_waves = 9000;
-  static time_ms was = millis();
-  time_ms now = millis();
-  long since = now - was;
-  if (since < time_between_sparkle_waves) {
+  static time_ms previous = millis();
+  time_ms current = millis();
+  long elapsed = current - previous;
+  if (elapsed < time_between_sparkle_waves) {
     return;
   }
-  was = now;
+  previous = current;
 
   // lamps each sparkle in antici...
   for (int i = 1; i < NUM_LEDS; i++) {
@@ -309,17 +309,10 @@ void handleRotaryInterrupt0() {
 
   static time_ms previous = millis();
   time_ms current = millis();
-  if (current < previous) {
-    // fix up (very rare) wraparound
-    previous = current;
-  }
-
-  if (current - previous < 1) {
-    // debounce by ignoring unrealistically rapid changes
+  time_ms elapsed = current - previous;
+  if (elapsed < 1) {
     return;
   }
-
-  // reset debounce timer
   previous = current;
 
   handleKnobChange(0);
@@ -331,14 +324,10 @@ void handleRotaryInterrupt1() {
   
   static time_ms previous = millis();
   time_ms current = millis();
-  if (current < previous) {
-    previous = current - 1;
-  }
-
-  if (current - previous < 1) {
+  time_ms elapsed = current - previous;
+  if (elapsed < 1) {
     return;
   }
-
   previous = current;
   
   handleKnobChange(1);
@@ -350,14 +339,10 @@ void handleRotaryInterrupt2() {
   
   static time_ms previous = millis();
   time_ms current = millis();
-  if (current < previous) {
-    previous = current - 1;
-  }
-
-  if (current - previous < 1) {
+  time_ms elapsed = current - previous;
+  if (elapsed < 1) {
     return;
   }
-
   previous = current;
 
   handleKnobChange(2);
