@@ -490,16 +490,20 @@ void dispatchBundleContents(OSCBundle *bundleIN) {
 
 // Send OSC messages...
 
-/// send an OSC message to a specified OSC address, containing a single specified float parameter value
-void sendOSCFloat(const char *address, float value) {
-  
-    OSCMessage msg(address);
-    msg.add(value);
+void sendOSCMessage(OSCMessage &msg) {
 
     SLIPSerial.beginPacket();
     msg.send(SLIPSerial); // send the bytes to the SLIP stream
     SLIPSerial.endPacket(); // mark the end of the OSC Packet
     msg.empty(); // free space occupied by message
+
+}
+/// send an OSC message to a specified OSC address, containing a single specified float parameter value
+void sendOSCFloat(const char *address, float value) {
+  
+    OSCMessage msg(address);
+    msg.add(value);
+    sendOSCMessage(msg);
     
 }
 
