@@ -363,6 +363,26 @@ void consumeKnobChanges(int ii, bool resetValue = false) {
   }
 }
 
+void handleButtonStateChange(int ii) {
+  
+  if (ii == 0) {
+    // record button
+    if (button_state[ii] == PRESSING) {
+      sendRecordToggle();
+    }
+  } else if (ii < 6) {
+    // stomp buttons 1-5
+
+  } else if (ii < 9) {
+    // knob selects 6-8
+
+  } else {
+    // joystick select
+    
+  }
+
+}
+
 /// set up data structures for control inputs
 void initControls() {
 
@@ -419,14 +439,7 @@ void scanControls() {
     }
 
     if (button_state[ii] != was) {
-       
-       if (ii == 0) {
-         // record button
-         if (button_state[ii] == PRESSING) {
-           sendRecordToggle();
-         }
-       }
-
+       handleButtonStateChange(ii);
     }
   }
 
