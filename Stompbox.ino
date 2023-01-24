@@ -277,7 +277,7 @@ void idleAnimation() {
   const time_ms time_between_sparkle_waves = 9000;
   static time_ms previous = millis();
   time_ms current = millis();
-  long elapsed = current - previous;
+  time_ms elapsed = current - previous;
   if (elapsed < time_between_sparkle_waves) {
     return;
   }
