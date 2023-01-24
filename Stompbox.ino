@@ -522,6 +522,19 @@ void listenForOSC() {
   }
 }
 
+/// send an OSC message to a specified OSC address, containing a single specified float parameter value
+void sendOSCFloat(const char *address, float value) {
+  
+    OSCMessage msg(address);
+    msg.add(value);
+
+    SLIPSerial.beginPacket();
+    msg.send(SLIPSerial); // send the bytes to the SLIP stream
+    SLIPSerial.endPacket(); // mark the end of the OSC Packet
+    msg.empty(); // free space occupied by message
+    
+}
+
 /// send a simple OSC message. Proof of concept: send external pedal as master volume. (It's easy to see and even hear if we're transmitting OSC properly.)
 void sendMasterVolume() {
   // @#@t
@@ -535,12 +548,7 @@ void sendMasterVolume() {
   byte value = raw >> 2;
   
   if (value != prevValue) {
-    OSCMessage msg("/master/volume");
-    msg.add((float)value / 127.0);
-    SLIPSerial.beginPacket();
-    msg.send(SLIPSerial); // send the bytes to the SLIP stream
-    SLIPSerial.endPacket(); // mark the end of the OSC Packet
-    msg.empty(); // free space occupied by message
+    sendOSCFloat("/master/volume", (float) value / 127.0);
     prevValue = value;
   }
 }
