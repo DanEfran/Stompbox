@@ -46,7 +46,7 @@
 */
 
 // how much output to terminal window? 0 = silent running, 1 = user, 2 = power user, 3 = debug
-let verbose = 2;
+let verbose = 1;
 
 let comName;
 // comName = '/dev/ttyUSB0'; // Uncomment this line to select a specific port instead of searching for an Arduino.
@@ -89,7 +89,7 @@ server.on('message', (message, rinfo) => {
 	} else if (verbose >= 2) {
 		console.log(`>>> ${message.toString()}\n`); // @#@#@
 	} else if (verbose >= 1) {
-		console.log('>');
+		console.log('\t>');
 	}
 
 	
@@ -162,15 +162,17 @@ if (comName) {
 				console.log(port)
 				}
 				
-				// manufacturer isn't reliable; it might well be the USB I/O rather than the Arduino brain itself.
-				// in any case I may have multiple arduino devices connected at times
-				// so I just cheat and scan for my specific device by hardcoded serial number.
+				// this doesn't seem super reliable; sometimes the device connects without a specific driver?
 				let foundArduino = (
-					( port.manufacturer
-						&& port.manufacturer.match(/(?:.*Teensy.*)|(?:.*Arduino.*)/) 
+					( 
+						port.manufacturer
+							&& port.manufacturer.match(/(?:.*Teensy.*)|(?:.*Arduino.*)/) 
 					) || (
-					  port.friendlyName
-						&& port.friendlyName.match(/(?:.*CP210x.*)/)
+						port.friendlyName
+							&& port.friendlyName.match(/(?:.*CP210x.*)/)
+					) || (
+						port.friendlyName
+							&& port.friendlyName.match(/(?:.*USB Serial Device.*)/)
 					)
 				)
 					
@@ -185,6 +187,11 @@ if (comName) {
 							console.log('\t\t' + port.friendlyName);
 							console.log('\t\t' + port.serialNumber);
 						}
+						if (port.friendlyName && port.friendlyName.match(/(?:.*USB Serial Device.*)/)) {
+							console.log('*** Using Generic Driver');
+						}
+					} else if (verbose >= 1) {
+						console.log('- Port: ' + port.friendlyName);
 					}
 					return true;
 				}
@@ -193,7 +200,7 @@ if (comName) {
 			
 			if (!comName) {
 				comName = ports[0].path; // ports.length - 1
-				console.warn('- No Arduino found, selecting first COM port (' + comName + ') of ' + ports.length);
+				console.warn('*** No Arduino found, selecting first COM port (' + comName + ') of ' + ports.length);
 			}
 			
 			if (verbose >= 2) {
