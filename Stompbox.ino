@@ -48,7 +48,6 @@ RST (Reset button is connected to reset pin.)
 #include <FastLED.h>
 
 // OSC support
-
 #include <OSCBundle.h>
 // Note: OSC's clockless_trinket.h has a "#define DONE" that conflicts with other library code; I've renamed it to ASM_DONE
 #include <OSCBoards.h>
@@ -61,10 +60,6 @@ SLIPEncodedUSBSerial SLIPSerial( thisBoardsSerialUSB );
 #include <SLIPEncodedSerial.h>
 SLIPEncodedSerial SLIPSerial(Serial);
 #endif
-
-// old-school Serial Monitor logging, only if absolutely necessary. DISABLE the SLIP support above if using it, or else one or the other won't work.
-//#define SERIAL_LOGGING
-
 
 // ** types **
 
@@ -97,8 +92,10 @@ typedef struct knob_state_s {
   int direction;
   bool changed;
 } knob_state_s;
+
 // ** constants **
 
+// FastLED's all-LEDs brightness maximum/scale factor
 const byte LED_MASTER_BRIGHTNESS = 127;
 
 // total NeoPixels in display (including illuminated Record button)
@@ -162,27 +159,6 @@ const byte PIN_ROTARY_B[NUM_KNOBS] = {
   ROTARY_1_B, ROTARY_2_B, ROTARY_3_B
 };
 
-
-// ** logging **
-
-/// print a message over the serial I/O line...only if relevant #define is operative. No-op otherwise.
-void log(const char *message) {
-
-#ifdef SERIAL_LOGGING
-  Serial.println(message);
-#endif
-
-}
-
-/// print a message over the serial I/O line...only if relevant #define is operative. No-op otherwise.
-void log(const String& message) {
-
-#ifdef SERIAL_LOGGING
-  Serial.println(message);
-#endif
-
-}
-
 // ** globals **
 
 // the NeoPixel LEDs (FastLED display buffer: set these and call show to update display)
@@ -199,18 +175,24 @@ knob_state_s knob_state[NUM_KNOBS];
 
 // ** visual display (LEDs) **
 
+// HSV color values
 const byte V_RECORD_IDLE = 140;
 const byte V_LAMP_IDLE = 128;
 const byte V_FULL = 255;
 const byte V_OFF = 0;
 
+// HSV color hues
 const byte H_RED = 0;
 const byte H_VINTAGE_LAMP = 50;
 
+// HSV color saturations
 const byte S_VINTAGE_LAMP = 200;
 const byte S_FULL = 255;
 
 /// brighten or darken an LED
+// animation blocks processing until complete. 
+// slowness parameter is ms of delay between change steps; change_step is size of each step. Both together control animation speed.
+// If change_step is 0, change is instantaneous. If slowness is 0, animation runs as fast as possible while showing each step. 
 void glowChange(int led, byte hue, byte sat, byte val_from, byte val_to, int slowness, int change_step) {
 
   if (change_step == 0) {
@@ -274,7 +256,7 @@ void startupLightshow() {
 void idleAnimation() {
 
   // periodically...
-  const time_ms time_between_sparkle_waves = 9000;
+  const time_ms time_between_sparkle_waves = 4000;
   static time_ms previous = millis();
   time_ms current = millis();
   time_ms elapsed = current - previous;
@@ -307,6 +289,7 @@ void flashBuiltInLED()
 /// rotary encoder 1A interrupt handler
 void handleRotaryInterrupt0() {
 
+  // debounce
   static time_ms previous = millis();
   time_ms current = millis();
   time_ms elapsed = current - previous;
@@ -322,6 +305,7 @@ void handleRotaryInterrupt0() {
 /// rotary encoder 2A interrupt handler
 void handleRotaryInterrupt1() {
   
+  // debounce
   static time_ms previous = millis();
   time_ms current = millis();
   time_ms elapsed = current - previous;
@@ -337,6 +321,7 @@ void handleRotaryInterrupt1() {
 /// rotary encoder 3A interrupt handler
 void handleRotaryInterrupt2() {
   
+  // debounce
   static time_ms previous = millis();
   time_ms current = millis();
   time_ms elapsed = current - previous;
@@ -352,25 +337,19 @@ void handleRotaryInterrupt2() {
 /// a rotary encoder has been turned. record the change in value.
 void handleKnobChange(int ii) {
 
-  // code A has changed. 
-  // if code B is the same as A, knob is turning in one direction; if different, the other direction. actually pretty simple.
+  // code A has just changed...
 
   int aa = digitalRead(PIN_ROTARY_A[ii]);
   int bb = digitalRead(PIN_ROTARY_B[ii]);
 
+  // if code B is the same as A, knob is turning in one direction; if different, the other direction. actually pretty simple.
   int direction = (aa == bb) ? -1 : 1;
 
-  // changes are interrupt-driven and thus can arrive faster than once (per knob) per loop tick.
+  // changes are interrupt-driven and thus can arrive faster than once per loop tick.
   // here we accumulate changes until loop consumes them.
   knob_state[ii].delta += direction;
   knob_state[ii].value += direction;
   knob_state[ii].changed = true;
-  
-  
-  knob_state[ii].direction = direction;
-
-  knob_state[ii].codeA = aa;
-  knob_state[ii].codeB = bb;
 
 }
 
@@ -399,9 +378,6 @@ void initControls() {
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
     knob_state[ii].value = 0; 
     knob_state[ii].delta = 0;
-    knob_state[ii].codeA = digitalRead(PIN_ROTARY_A[ii]);
-    knob_state[ii].codeB = digitalRead(PIN_ROTARY_B[ii]);
-    knob_state[ii].direction = (knob_state[ii].codeA == knob_state[ii].codeB) ? -1 : 1;
     knob_state[ii].changed = false;
   }
 
@@ -443,22 +419,20 @@ void scanControls() {
     }
 
     if (button_state[ii] != was) {
-      String msg = "button ";
-      msg = msg + ii + ": " + button_state[ii];
-      log(msg);
+       // @#@#@ handler
     }
   }
 
   // pedals
   for (int ii = 0; ii < NUM_PEDALS; ii++) {
-    int result = analogRead(PIN_PEDAL[ii]);
+    int result = analogRead(PIN_PEDAL[ii]); 
     int was = pedal_state[ii].value;
     pedal_state[ii].delta = result - was;
     pedal_state[ii].value = result;
 
     // @#@t crudely debounced
     if (abs(result - was) > 5) {
-      sendMasterVolume();
+      sendMasterVolume(pedal_state[ii].value); // @#@#@t proof of concept only
     }
   }
 
@@ -469,24 +443,14 @@ void scanControls() {
 //  byte oldSREG = SREG; // save interrupts status (on or off; likely on)
 //	noInterrupts(); // protect event buffer integrity
 
-  bool anyChanged = false;
-
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
     
-    msg = msg + "knob " + ii + ": " + knob_state[ii].value;
-    msg = msg + "   delta " + knob_state[ii].delta;
-    msg = msg + "   direction " + knob_state[ii].direction;
-    msg = msg + "   ";
+    // @#@#@u handler
 
-    anyChanged = anyChanged || knob_state[ii].changed;    
-    
     consumeKnobChanges(ii);
 
   }
 
-  if (anyChanged) {
-    log(msg);
-  }
 
 //  SREG = oldSREG; // restore interrupts status
 
@@ -540,13 +504,28 @@ void sendOSCFloat(const char *address, float value) {
 }
 
 /// send a simple OSC message. Proof of concept: send external pedal as master volume. (It's easy to see and even hear if we're transmitting OSC properly.)
-void sendMasterVolume() {
-  // @#@t
+void sendMasterVolume(uint16_t raw) {
+
+  // debounce to protect serial connection
+  // if we send these messages too fast, we crash the serial connection (error 31 in the node.js bridge) or even crash/freeze the arduino (somehow???)
+  // so we throttle these to send no more often that about 5 or 10 ms. 
+  // (Adjust to taste for your risk tolerance; the absolute minimum without problems in a simple test seems to be about 4 or 5 ms.)
+  const time_ms minimum_time_between_sends = 10;
+  static time_ms previous = millis();
+  time_ms current = millis();
+  time_ms elapsed = current - previous;
+  if (elapsed < minimum_time_between_sends) {
+    return;
+  }
+  previous = current;
+
+
+  // @#@t proof of concept (from sample code)
+
   //static EMA<2, int16_t> ema;
   //static Hysteresis hyst;
   static uint8_t prevValue = 0xFF;
 
-  uint16_t raw = analogRead(A2); // external pedal
   //uint16_t filtered = ema.filter(raw);
   //uint8_t value = hyst.getOutputLevel(filtered);
   byte value = raw >> 2;
@@ -563,7 +542,7 @@ void sendMasterVolume() {
 /// pin configuration
 void setupPins() {
   
-    // buttons make to ground and expect internal pullups
+  // buttons make to ground and expect internal pullups
   for (int ii = 0; ii < NUM_BUTTONS; ii++) {
     pinMode(PIN_BUTTON[ii], INPUT_PULLUP);
   }
@@ -590,25 +569,21 @@ void setupPins() {
 /// main arduino init
 void setup() {
 
-  // get ready for USB I/O...
-
-#ifdef SERIAL_LOGGING
-  // establish the standard arduino serial connection for debug logging
-  // (Note: for extreme debugging only; not available when OSC is in use.)
-  Serial.begin(57600);
-#endif
-
+  // open OSC-over-USB connection
   SLIPSerial.begin(115200);
 
-  // get ready for control surface controls and lamps...
-
+  // activate arduino pins for input and output as appropriate
   setupPins();
   
+  // set up and clear controls status
   initControls();
 
+  // configure LEDs
 	FastLED.addLeds<WS2812,PIN_LED_DATA,RGB>(leds,NUM_LEDS);
 	FastLED.setBrightness(LED_MASTER_BRIGHTNESS);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 500);
+
+  // ...all subsystems ready.
 
   // make it clear to the user that the device has just been powered on or reset
   startupLightshow();
