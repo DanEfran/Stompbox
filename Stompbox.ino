@@ -93,6 +93,20 @@ typedef struct knob_state_s {
   bool changed;
 } knob_state_s;
 
+// note: Reaper DAW sends both 'record ON' and 'play ON' simultaneously; 
+// but OSC dispatch paradigm does not make it easy to respond appropriately and track both.
+// we can try but it's not clear how much effort it's worth.
+// ...indeed, Reaper actually seems to send 'Record OFF Play OFF Stop ON Pause ON' when pausing.
+// that bundle would have to be processed atomically as a bundle, not as four messages, to properly track the state.
+// maybe someday we can do that, but it's too much work for now. So we track Record or not, but ignore Pause etc.
+// (For that matter, Reaper doesn't seem to send these things spontaneously in all cases. So it's risky to expect them.)
+
+typedef struct daw_state_s {
+
+  bool recording;
+
+} daw_state_s;
+
 // ** constants **
 
 // FastLED's all-LEDs brightness maximum/scale factor
@@ -173,6 +187,9 @@ pedal_state_s pedal_state[NUM_PEDALS];
 // current state of each knob: current value and how far it's changed since last reading, plus the raw rotary code data.
 knob_state_s knob_state[NUM_KNOBS];
 
+// current state of DAW (based on OSC feedback)
+daw_state_s daw_state;
+
 // ** visual display (LEDs) **
 
 // HSV color values
@@ -184,6 +201,8 @@ const byte V_OFF = 0;
 
 // HSV color hues
 const byte H_RED = 0;
+//const byte H_GREEN = 100;
+//const byte H_BLUE = 150;
 const byte H_VINTAGE_LAMP = 50;
 
 // HSV color saturations
@@ -365,13 +384,16 @@ void consumeKnobChanges(int ii, bool resetValue = false) {
   }
 }
 
+void handleRecordButtonStateChange() {
+  if (button_state[0] == PRESSING) {
+    sendRecordToggle();
+  } 
+}
+
 void handleButtonStateChange(int ii) {
   
   if (ii == 0) {
-    // record button
-    if (button_state[ii] == PRESSING) {
-      sendRecordToggle();
-    }
+    handleRecordButtonStateChange();
   } else if (ii < 6) {
     // stomp buttons 1-5
 
@@ -382,6 +404,14 @@ void handleButtonStateChange(int ii) {
     // joystick select
     
   }
+
+}
+
+/// set up data structure to track remote DAW's status
+void initDawState() {
+  
+  // we're guessing about this initially
+  daw_state.recording = false;
 
 }
 
@@ -453,7 +483,7 @@ void scanControls() {
     pedal_state[ii].value = result;
 
     // @#@t crudely debounced
-    if (abs(result - was) > 5) {
+    if (abs(result - was) > 10) {
       sendMasterVolume(pedal_state[ii].value); // @#@#@t proof of concept only
     }
   }
@@ -509,6 +539,7 @@ void listenForOSC() {
 void dispatchBundleContents(OSCBundle *bundleIN) {
   //bundleIN->dispatch("/track/*/mute", muteHandler);
   bundleIN->dispatch("/record", handleOSC_Record);
+  
 }
 
 // Handle incoming OSC messages...
@@ -516,12 +547,18 @@ void dispatchBundleContents(OSCBundle *bundleIN) {
 void handleOSC_Record(OSCMessage &msg) {
 
   byte status = msg.getFloat(0);
+  daw_state.recording = (status != 0.0);
+  updateRecordButtonColor();
+}
 
-  if (status == 0.0) {
-    glowDown(0, H_RED, S_FULL, V_FULL, V_DIM, 0, -3);
+void updateRecordButtonColor() {
+
+  if (daw_state.recording) {
+    leds[0] = CHSV(H_RED, S_FULL, V_FULL);
   } else {
-    glowUp(0, H_RED, S_FULL, V_DIM, V_FULL, 0, 3);
+    leds[0] = CHSV(H_RED, S_FULL, V_DIM);
   }
+  FastLED.show();
 }
 
 // Send OSC messages...
@@ -540,20 +577,18 @@ void sendOSCFloat(const char *address, float value) {
     OSCMessage msg(address);
     msg.add(value);
     sendOSCMessage(msg);
-    
+
 }
 
 void sendOSCTrigger(const char *address) {
-  
+
   OSCMessage msg(address);
   sendOSCMessage(msg);
 
 }
 
 void sendRecordToggle() {
-
   sendOSCTrigger("/record");
-
 }
 
 /// send a simple OSC message. Proof of concept: send external pedal as master volume. (It's easy to see and even hear if we're transmitting OSC properly.)
@@ -629,6 +664,8 @@ void setup() {
   // activate arduino pins for input and output as appropriate
   setupPins();
   
+  initDawState();
+
   // set up and clear controls status
   initControls();
 
