@@ -493,7 +493,7 @@ void listenForOSC() {
   if (eot) {
     if (!bundleIN->hasError()) {
 
-      flashBuiltInLED();
+      flashBuiltInLED(); // @#@t
 
       dispatchBundleContents(bundleIN);
 
@@ -506,6 +506,16 @@ void listenForOSC() {
 /// handle the contents of an incoming OSC bundle
 void dispatchBundleContents(OSCBundle *bundleIN) {
   //bundleIN->dispatch("/track/*/mute", muteHandler);
+  bundleIN->dispatch("/record", handleOSC_Record);
+}
+
+// Handle incoming OSC messages...
+
+void handleOSC_Record(OSCMessage &msg) {
+
+  float status = msg.getFloat(0);
+  leds[0] = CHSV(H_RED, S_FULL, 255 * status);
+  FastLED.show();
 }
 
 // Send OSC messages...
