@@ -179,6 +179,7 @@ knob_state_s knob_state[NUM_KNOBS];
 const byte V_RECORD_IDLE = 140;
 const byte V_LAMP_IDLE = 128;
 const byte V_FULL = 255;
+const byte V_DIM = 45;
 const byte V_OFF = 0;
 
 // HSV color hues
@@ -238,7 +239,8 @@ void startupLightshow() {
   delay(300);
 
   // ...then dims to idle
-  glowDown(0, H_RED, S_FULL, V_FULL, V_RECORD_IDLE, 4);
+  glowDown(0, H_RED, S_FULL, V_FULL, V_DIM, 4);
+  // Best UI for Record button is not yet clear. Adjust to taste.
   delay(700);
 
   // lamps each sparkle in antici...
@@ -513,9 +515,13 @@ void dispatchBundleContents(OSCBundle *bundleIN) {
 
 void handleOSC_Record(OSCMessage &msg) {
 
-  float status = msg.getFloat(0);
-  leds[0] = CHSV(H_RED, S_FULL, 255 * status);
-  FastLED.show();
+  byte status = msg.getFloat(0);
+
+  if (status == 0.0) {
+    glowDown(0, H_RED, S_FULL, V_FULL, V_DIM, 0, -3);
+  } else {
+    glowUp(0, H_RED, S_FULL, V_DIM, V_FULL, 0, 3);
+  }
 }
 
 // Send OSC messages...
