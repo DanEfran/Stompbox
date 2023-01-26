@@ -104,6 +104,7 @@ typedef struct knob_state_s {
 typedef struct daw_state_s {
 
   bool recording;
+  bool fx_bypass[5];
 
 } daw_state_s;
 
@@ -390,13 +391,62 @@ void handleRecordButtonStateChange() {
   } 
 }
 
+void handleStompButtonStateChange(int ii) {
+
+  if (button_state[ii] == PRESSING) {
+      
+    // debounce.
+    // @#@t there are several places we could do this; this may not be the best.
+    // (per button? per direction of change? various ways we could implement debouncing....)
+    const time_ms minimum_time_between_stomps = 500;
+    static time_ms previous = millis();
+    time_ms current = millis();
+    time_ms elapsed = current - previous;
+    if (elapsed < minimum_time_between_stomps) {
+      return;
+    }
+    previous = current;
+
+    // so, what do the buttons do? Adjust to taste...
+    // button 1 (first stomp button next to Record button) toggles FX #3 on track 1.
+    // (Why #3? FX #1 is MIDI Bad Fader CC Filter, a standard FX Chain item for my tracks due to a flaky fader;
+    //  FX #2 on a guitar track is a tuner; generally no need to bypass that)
+    // button 2 (second stomp button) toggles FX #4 on track 1.
+    // button 3 (second stomp button) toggles FX #5 on track 1.
+    // button 4 (second stomp button) toggles FX #6 on track 1.
+    // button 5 (second stomp button) toggles FX #7 on track 1.
+
+    const int fx_bypass_index_for_button[NUM_BASIC_BUTTONS] = { -1, 3, 4, 5, 6, 7 };
+
+    // let's keep this switch even if the options are all parallel for now; we might change some of them later.
+    switch (ii) {
+      case 1:
+        sendFxBypassBool(1, fx_bypass_index_for_button[1], !(daw_state.fx_bypass[0]));
+        break;
+      case 2:
+        sendFxBypassBool(1, fx_bypass_index_for_button[2], !(daw_state.fx_bypass[1]));
+        break;
+      case 3:
+        sendFxBypassBool(1, fx_bypass_index_for_button[3], !(daw_state.fx_bypass[2]));
+        break;
+      case 4:
+        sendFxBypassBool(1, fx_bypass_index_for_button[4], !(daw_state.fx_bypass[3]));
+        break;
+      case 5:
+        sendFxBypassBool(1, fx_bypass_index_for_button[5], !(daw_state.fx_bypass[4]));
+        break;
+    }
+
+  }
+
+}
+
 void handleButtonStateChange(int ii) {
   
   if (ii == 0) {
     handleRecordButtonStateChange();
   } else if (ii < 6) {
-    // stomp buttons 1-5
-
+    handleStompButtonStateChange(ii);
   } else if (ii < 9) {
     // knob selects 6-8
 
@@ -412,7 +462,12 @@ void initDawState() {
   
   // we're guessing about this initially
   daw_state.recording = false;
-
+  daw_state.fx_bypass[0] = false;
+  daw_state.fx_bypass[1] = false;
+  daw_state.fx_bypass[2] = false;
+  daw_state.fx_bypass[3] = false;
+  daw_state.fx_bypass[4] = false;
+  
 }
 
 /// set up data structures for control inputs
@@ -539,7 +594,9 @@ void listenForOSC() {
 void dispatchBundleContents(OSCBundle *bundleIN) {
   //bundleIN->dispatch("/track/*/mute", muteHandler);
   bundleIN->dispatch("/record", handleOSC_Record);
-  
+
+  // @#@#@u
+  //bundleIN->dispatch("/track/*/fx/*/bypass", handleOSC_FxBypass);
 }
 
 // Handle incoming OSC messages...
@@ -561,6 +618,7 @@ void updateRecordButtonColor() {
   FastLED.show();
 }
 
+
 // Send OSC messages...
 
 void sendOSCMessage(OSCMessage &msg) {
@@ -571,6 +629,7 @@ void sendOSCMessage(OSCMessage &msg) {
     msg.empty(); // free space occupied by message
 
 }
+
 /// send an OSC message to a specified OSC address, containing a single specified float parameter value
 void sendOSCFloat(const char *address, float value) {
   
@@ -580,6 +639,29 @@ void sendOSCFloat(const char *address, float value) {
 
 }
 
+void sendOSCInt(const char *address, int value) {
+  
+    OSCMessage msg(address);
+    msg.add(value);
+    sendOSCMessage(msg);
+
+}
+
+void sendOSCString(const char *address, const char *value) {
+  
+    OSCMessage msg(address);
+    msg.add(value);
+    sendOSCMessage(msg);
+
+}
+
+void sendOSCBool(const char *address, bool value) {
+  
+    OSCMessage msg(address);
+    msg.add(value);
+    sendOSCMessage(msg);
+
+}
 void sendOSCTrigger(const char *address) {
 
   OSCMessage msg(address);
@@ -589,6 +671,25 @@ void sendOSCTrigger(const char *address) {
 
 void sendRecordToggle() {
   sendOSCTrigger("/record");
+}
+
+void sendFxBypassBool(int track, int fx, bool value) {
+
+  // native Reaper OSC FX_BYPASS command doesn't work, or I'm not implementing it properly.
+  // (Reaper's OSC default config file is sparsely and tersely documented, with almost no discussion of how Reaper actually behaves over OSC.) 
+  // Luckily we have the S&M commands, and this sequence seems to work:
+
+  String addr = "/action/";
+  addr = addr + (40938 + track); // track 1: action 40939; track 2: action 40940, etc. No track 0.
+  sendOSCInt(addr.c_str(), 1);
+  delay(10);
+//  String msg = "_S&M_FXBYP_SETO";
+//  msg = msg + (value ? "N" : "FF");
+//  msg = msg + fx;
+  String msg = "_S&M_FXBYP";
+  msg = msg + fx;
+  sendOSCString("/action/str", msg.c_str());
+  delay(10);
 }
 
 /// send a simple OSC message. Proof of concept: send external pedal as master volume. (It's easy to see and even hear if we're transmitting OSC properly.)
