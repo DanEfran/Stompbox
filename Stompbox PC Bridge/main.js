@@ -46,7 +46,7 @@
 */
 
 // how much output to terminal window? 0 = silent running, 1 = user, 2 = power user, 3 = debug
-let verbose = 1;
+let verbose = 2;
 
 let comName;
 // comName = '/dev/ttyUSB0'; // Uncomment this line to select a specific port instead of searching for an Arduino.
