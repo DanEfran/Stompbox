@@ -567,27 +567,76 @@ void scanControls() {
 
 // Receive OSC messages...
 
+typedef enum listening_status_e { BUNDLE_OR_MESSAGE_START, BUNDLE, MESSAGE } listening_status_e;
+
 // receive and dispatch OSC bundles
 void listenForOSC() {
 
-  static OSCBundle *bundleIN = new OSCBundle; // See https://github.com/CNMAT/OSC/issues/87
+  static OSCBundle *bundleIN = new OSCBundle;
+  static OSCMessage *messageIN = new OSCMessage;
+  static listening_status_e listeningFor = BUNDLE_OR_MESSAGE_START;
+
   bool eot =  SLIPSerial.endofPacket();
   while (SLIPSerial.available() && !eot) {
     uint8_t data = SLIPSerial.read();
-    bundleIN->fill(data);
+    if (listeningFor == BUNDLE_OR_MESSAGE_START) {
+      if (data == 35) {
+        // "#"
+        listeningFor = BUNDLE;
+      } else if (data == 47) {
+        // "/"
+        listeningFor = MESSAGE;
+      } else {
+        // @#@u error: neither        
+      }
+    }
+    if (listeningFor == BUNDLE) {
+      bundleIN->fill(data);
+    } else if (listeningFor == MESSAGE) {
+      messageIN->fill(data);
+    }
     eot =  SLIPSerial.endofPacket();
   }
+
   if (eot) {
-    if (!bundleIN->hasError()) {
+    if ( (listeningFor == BUNDLE) && bundleIN->hasError() ) {
+      
+      digitalWrite(LED_BUILTIN, 1); // @#@d
+      int err = bundleIN->getError();
+      char report[99];
+      sprintf(report, "%d: '%s' (%d)", err, bundleIN->incomingBuffer, bundleIN->incomingBufferSize);
+      sendOSCString("/foobar/error", report);
+      sendOSCString("/foobar/error", bundleIN->errorDetails);
+      bundleIN->errorDetails[0] = 0;
+    } else if (listeningFor == BUNDLE) {
 
       flashBuiltInLED(); // @#@t
 
-      dispatchBundleContents(bundleIN);
+      char report[99];
+      sprintf(report, "got; (%d) '%s'", bundleIN->incomingBufferSize, bundleIN->incomingBuffer);
+      //sendOSCString("/foobar/bundle", report);
 
+      dispatchBundleContents(bundleIN);
+      bundleIN->empty();
+      listeningFor = BUNDLE_OR_MESSAGE_START;
+
+    } else if (listeningFor == MESSAGE) {
+
+      flashBuiltInLED(); // @#@t
+
+      char report[99];
+      sprintf(report, "got; (%d) '%s'", messageIN->incomingBufferSize, messageIN->incomingBuffer);
+      //sendOSCString("/foobar/message", report);
+
+      dispatchMessage(messageIN);
+      messageIN->empty();
+      listeningFor = BUNDLE_OR_MESSAGE_START;
+      
     }
-    delete bundleIN;
-    bundleIN = new OSCBundle;
+    
   }
+  // else wait for more...
+
 }
 
 /// handle the contents of an incoming OSC bundle
@@ -595,8 +644,25 @@ void dispatchBundleContents(OSCBundle *bundleIN) {
   //bundleIN->dispatch("/track/*/mute", muteHandler);
   bundleIN->dispatch("/record", handleOSC_Record);
 
-  // @#@#@u
-  //bundleIN->dispatch("/track/*/fx/*/bypass", handleOSC_FxBypass);
+//  bundleIN->dispatch("/track/1/fx/*/bypass", handleOSC_FxBypass);
+  bundleIN->dispatch("/track/1/fx/3/bypass", handleOSC_FxBypass3);
+  bundleIN->dispatch("/track/1/fx/4/bypass", handleOSC_FxBypass4);
+  bundleIN->dispatch("/track/1/fx/5/bypass", handleOSC_FxBypass5);
+  bundleIN->dispatch("/track/1/fx/6/bypass", handleOSC_FxBypass6);
+  bundleIN->dispatch("/track/1/fx/7/bypass", handleOSC_FxBypass7);
+}
+
+void dispatchMessage(OSCMessage *messageIN) {
+
+  messageIN->dispatch("/record", handleOSC_Record);
+
+//  messageIN->dispatch("/track/1/fx/*/bypass", handleOSC_FxBypass);
+  messageIN->dispatch("/track/1/fx/3/bypass", handleOSC_FxBypass3);
+  messageIN->dispatch("/track/1/fx/4/bypass", handleOSC_FxBypass4);
+  messageIN->dispatch("/track/1/fx/5/bypass", handleOSC_FxBypass5);
+  messageIN->dispatch("/track/1/fx/6/bypass", handleOSC_FxBypass6);
+  messageIN->dispatch("/track/1/fx/7/bypass", handleOSC_FxBypass7);
+
 }
 
 // Handle incoming OSC messages...
@@ -618,6 +684,54 @@ void updateRecordButtonColor() {
   FastLED.show();
 }
 
+void handleOSC_FxBypass(OSCMessage &msg) {
+
+  sendOSCString("/foobar/bypass", msg.incomingBuffer);
+
+}
+
+void handleOSC_FxBypass3(OSCMessage &msg) {
+  int value = msg.getFloat(0);
+  daw_state.fx_bypass[0] = (value == 0);
+  updateLampColors();
+}
+
+void handleOSC_FxBypass4(OSCMessage &msg) {
+  int value = msg.getFloat(0);
+  daw_state.fx_bypass[1] = (value == 0);
+  updateLampColors();
+}
+
+void handleOSC_FxBypass5(OSCMessage &msg) {
+  int value = msg.getFloat(0);
+  daw_state.fx_bypass[2] = (value == 0);
+  updateLampColors();
+}
+
+void handleOSC_FxBypass6(OSCMessage &msg) {
+  int value = msg.getFloat(0);
+  daw_state.fx_bypass[3] = (value == 0);
+  updateLampColors();
+}
+
+void handleOSC_FxBypass7(OSCMessage &msg) {
+  int value = msg.getFloat(0);
+  daw_state.fx_bypass[4] = (value == 0);
+  updateLampColors();
+}
+
+void updateLampColors() {
+  
+  for (int ii = 1; ii <= 5; ii++) {    
+    if (daw_state.fx_bypass[ii-1]) {
+      leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_DIM);
+    } else {
+      leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_FULL);
+    }
+    FastLED.show();
+  }
+
+}
 
 // Send OSC messages...
 
@@ -789,7 +903,7 @@ void loop() {
 
   listenForOSC();
 
-  idleAnimation(); // (optional)
+//  idleAnimation(); // (optional)
  
 } // loop
 
