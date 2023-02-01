@@ -105,6 +105,7 @@ typedef struct daw_state_s {
 
   bool recording;
   bool fx_bypass[5];
+  int amp_channel; // modes for plugin "The Anvil (Ignite Amps)" (param 2): saved here as 0, 1, 2 -- but over OSC, normalize to 0.0, 0.5, 1.0
 
 } daw_state_s;
 
@@ -418,7 +419,6 @@ void handleStompButtonStateChange(int ii) {
 
     const int fx_bypass_index_for_button[NUM_BASIC_BUTTONS] = { -1, 3, 4, 5, 6, 7 };
 
-    // let's keep this switch even if the options are all parallel for now; we might change some of them later.
     switch (ii) {
       case 1:
         sendFxBypassBool(1, fx_bypass_index_for_button[1], !(daw_state.fx_bypass[0]));
@@ -433,7 +433,10 @@ void handleStompButtonStateChange(int ii) {
         sendFxBypassBool(1, fx_bypass_index_for_button[4], !(daw_state.fx_bypass[3]));
         break;
       case 5:
-        sendFxBypassBool(1, fx_bypass_index_for_button[5], !(daw_state.fx_bypass[4]));
+        //sendFxBypassBool(1, fx_bypass_index_for_button[5], !(daw_state.fx_bypass[4]));
+        daw_state.amp_channel = (daw_state.amp_channel + 1) % 3; // cycle 0, 1, 2, 0, 1, 2...
+        float value = daw_state.amp_channel / 2.0; // normalize to 0, 0.5, 1.0
+        sendFxParamFloat(1, 5, 2, value);
         break;
     }
 
@@ -804,6 +807,20 @@ void sendFxBypassBool(int track, int fx, bool value) {
   msg = msg + fx;
   sendOSCString("/action/str", msg.c_str());
   delay(10);
+}
+
+void sendFxParamFloat(int track, int fx, int param, float value) {
+  // n/track/@/fx/@/fxparam/@/value -- n is for normalized (0.0-1.0)
+  String addr = "/track/";
+  addr = addr + track;
+  addr = addr + "/fx/";
+  addr = addr + fx;
+  addr = addr + "/fxparam/";
+  addr = addr + param;
+  addr = addr + "/value";
+  sendOSCFloat(addr.c_str(), value);
+  delay(10);
+
 }
 
 /// send a simple OSC message. Proof of concept: send external pedal as master volume. (It's easy to see and even hear if we're transmitting OSC properly.)

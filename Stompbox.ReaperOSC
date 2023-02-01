@@ -347,7 +347,8 @@ FX_NEXT_PRESET t/fx/preset+ t/fx/@/preset+ t/track/@/fx/@/preset+
 #FX_WETDRY n/fx/wetdry n/fx/@/wetdry n/track/@/fx/@/wetdry
 #FX_WETDRY s/fx/wetdry/str s/fx/@/wetdry/str s/track/@/fx/@/wetdry/str
 # @#@#@ might need this one at some point:
-#FX_PARAM_VALUE n/fxparam/@/value n/fx/@/fxparam/@/value n/track/@/fx/@/fxparam/@/value
+#FX_PARAM_VALUE n/fxparam/@/value n/fx/@/fxparam/@/value
+FX_PARAM_VALUE n/track/@/fx/@/fxparam/@/value
 # @#@#@ might need this one at some point:
 #FX_PARAM_VALUE s/fxparam/@/value/str s/fx/@/fxparam/@/value/str
 
