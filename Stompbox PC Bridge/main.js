@@ -199,6 +199,10 @@ if (comName) {
 			});
 			
 			if (!comName) {
+				if (ports.length == 1) {
+					console.error("No Arduino found, please try again in a moment.");
+					return false;
+				}
 				comName = ports[0].path; // ports.length - 1
 				console.warn('*** No Arduino found, selecting first COM port (' + comName + ') of ' + ports.length);
 			}
@@ -247,9 +251,9 @@ function receiveSerial(dataBuf) {
 		console.log('receiveSerial: length ' + dataBuf.length);
 	}
 	if (verbose >= 3) {
-		for (let ii = 0; ii < dataBuf.length; ii++) {
-			console.log('data: ' + dataBuf[ii]);
-		}
+		//for (let ii = 0; ii < dataBuf.length; ii++) {
+		//	console.log('data: ' + dataBuf[ii]);
+		//}
 		console.log('');
 	}
 	
