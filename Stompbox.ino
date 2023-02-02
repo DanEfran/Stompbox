@@ -204,6 +204,7 @@ const byte V_OFF = 0;
 // HSV color hues
 const byte H_RED = 0;
 const byte H_GREEN = 100;
+const byte H_AQUA = 115;
 const byte H_BLUE = 150;
 const byte H_PURPLE = 200;
 const byte H_PINK = 225;
@@ -740,7 +741,7 @@ void handleOSC_Fx5Fxparam2(OSCMessage &msg) {
 void updateLampColors() {
 
   static CRGB amp_channel_hue[3] = {
-    CHSV(H_GREEN, S_VINTAGE_LAMP, V_FULL),
+    CHSV(H_AQUA, S_VINTAGE_LAMP, V_FULL),
     CHSV(H_BLUE, S_VINTAGE_LAMP, V_FULL), 
     CHSV(H_PURPLE, S_VINTAGE_LAMP, V_FULL)
   };
