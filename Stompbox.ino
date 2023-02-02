@@ -203,8 +203,11 @@ const byte V_OFF = 0;
 
 // HSV color hues
 const byte H_RED = 0;
-//const byte H_GREEN = 100;
-//const byte H_BLUE = 150;
+const byte H_GREEN = 100;
+const byte H_BLUE = 150;
+const byte H_PURPLE = 200;
+const byte H_PINK = 225;
+
 const byte H_VINTAGE_LAMP = 50;
 
 // HSV color saturations
@@ -420,6 +423,7 @@ void handleStompButtonStateChange(int ii) {
     const int fx_bypass_index_for_button[NUM_BASIC_BUTTONS] = { -1, 3, 4, 5, 6, 7 };
 
     switch (ii) {
+
       case 1:
         sendFxBypassBool(1, fx_bypass_index_for_button[1], !(daw_state.fx_bypass[0]));
         break;
@@ -432,12 +436,13 @@ void handleStompButtonStateChange(int ii) {
       case 4:
         sendFxBypassBool(1, fx_bypass_index_for_button[4], !(daw_state.fx_bypass[3]));
         break;
+
       case 5:
-        //sendFxBypassBool(1, fx_bypass_index_for_button[5], !(daw_state.fx_bypass[4]));
         daw_state.amp_channel = (daw_state.amp_channel + 1) % 3; // cycle 0, 1, 2, 0, 1, 2...
         float value = daw_state.amp_channel / 2.0; // normalize to 0, 0.5, 1.0
         sendFxParamFloat(1, 5, 2, value);
         break;
+
     }
 
   }
@@ -653,6 +658,7 @@ void dispatchBundleContents(OSCBundle *bundleIN) {
   bundleIN->dispatch("/track/1/fx/5/bypass", handleOSC_FxBypass5);
   bundleIN->dispatch("/track/1/fx/6/bypass", handleOSC_FxBypass6);
   bundleIN->dispatch("/track/1/fx/7/bypass", handleOSC_FxBypass7);
+  bundleIN->dispatch("/track/1/fx/5/fxparam/2/value", handleOSC_Fx5Fxparam2);
 }
 
 void dispatchMessage(OSCMessage *messageIN) {
@@ -665,7 +671,7 @@ void dispatchMessage(OSCMessage *messageIN) {
   messageIN->dispatch("/track/1/fx/5/bypass", handleOSC_FxBypass5);
   messageIN->dispatch("/track/1/fx/6/bypass", handleOSC_FxBypass6);
   messageIN->dispatch("/track/1/fx/7/bypass", handleOSC_FxBypass7);
-
+  messageIN->dispatch("/track/1/fx/5/fxparam/2/value", handleOSC_Fx5Fxparam2);
 }
 
 // Handle incoming OSC messages...
@@ -723,13 +729,36 @@ void handleOSC_FxBypass7(OSCMessage &msg) {
   updateLampColors();
 }
 
+void handleOSC_Fx5Fxparam2(OSCMessage &msg) {
+
+  // float in message seems to be always 0?? ignore it
+
+  updateLampColors();
+
+}
+
 void updateLampColors() {
+
+  static CRGB amp_channel_hue[3] = {
+    CHSV(H_BLUE, S_VINTAGE_LAMP, V_FULL), 
+    CHSV(H_RED, S_VINTAGE_LAMP, V_FULL), 
+    CHSV(H_GREEN, S_VINTAGE_LAMP, V_FULL)
+  };
   
-  for (int ii = 1; ii <= 5; ii++) {    
-    if (daw_state.fx_bypass[ii-1]) {
-      leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_DIM);
+  for (int ii = 1; ii <= 5; ii++) {   
+    if (ii == 5) {
+      if (daw_state.fx_bypass[ii-1]) {
+        leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_DIM);
+      } else {
+        leds[ii] = amp_channel_hue[daw_state.amp_channel];
+      }
+      
     } else {
-      leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_FULL);
+      if (daw_state.fx_bypass[ii-1]) {
+        leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_DIM);
+      } else {
+        leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_FULL);
+      } 
     }
     FastLED.show();
   }
