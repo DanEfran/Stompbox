@@ -206,7 +206,7 @@ const byte H_RED = 0;
 const byte H_GREEN = 100;
 const byte H_AQUA = 115;
 const byte H_BLUE = 150;
-const byte H_PURPLE = 200;
+const byte H_PURPLE = 170;
 const byte H_PINK = 225;
 
 const byte H_VINTAGE_LAMP = 50;
@@ -743,7 +743,7 @@ void updateLampColors() {
   static CRGB amp_channel_hue[3] = {
     CHSV(H_AQUA, S_VINTAGE_LAMP, V_FULL),
     CHSV(H_BLUE, S_VINTAGE_LAMP, V_FULL), 
-    CHSV(H_PURPLE, S_VINTAGE_LAMP, V_FULL)
+    CHSV(H_PINK, S_VINTAGE_LAMP, V_FULL)
   };
   
   for (int ii = 1; ii <= 5; ii++) {   
