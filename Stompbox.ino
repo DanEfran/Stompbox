@@ -618,7 +618,7 @@ void listenForOSC() {
       bundleIN->errorDetails[0] = 0;
     } else if (listeningFor == BUNDLE) {
 
-      flashBuiltInLED(); // @#@t
+      //flashBuiltInLED(); // @#@t
 
       char report[99];
       sprintf(report, "got; (%d) '%s'", bundleIN->incomingBufferSize, bundleIN->incomingBuffer);
@@ -630,7 +630,7 @@ void listenForOSC() {
 
     } else if (listeningFor == MESSAGE) {
 
-      flashBuiltInLED(); // @#@t
+      //flashBuiltInLED(); // @#@t
 
       char report[99];
       sprintf(report, "got; (%d) '%s'", messageIN->incomingBufferSize, messageIN->incomingBuffer);
@@ -740,9 +740,9 @@ void handleOSC_Fx5Fxparam2(OSCMessage &msg) {
 void updateLampColors() {
 
   static CRGB amp_channel_hue[3] = {
+    CHSV(H_GREEN, S_VINTAGE_LAMP, V_FULL),
     CHSV(H_BLUE, S_VINTAGE_LAMP, V_FULL), 
-    CHSV(H_RED, S_VINTAGE_LAMP, V_FULL), 
-    CHSV(H_GREEN, S_VINTAGE_LAMP, V_FULL)
+    CHSV(H_PURPLE, S_VINTAGE_LAMP, V_FULL)
   };
   
   for (int ii = 1; ii <= 5; ii++) {   
