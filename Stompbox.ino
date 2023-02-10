@@ -104,7 +104,7 @@ typedef struct knob_state_s {
 typedef struct daw_state_s {
 
   bool recording;
-  bool fx_bypass[5];
+  bool fx_bypass[8];
   int amp_channel; // modes for plugin "The Anvil (Ignite Amps)" (param 2): saved here as 0, 1, 2 -- but over OSC, normalize to 0.0, 0.5, 1.0
 
 } daw_state_s;
@@ -426,7 +426,7 @@ void handleStompButtonStateChange(int ii) {
     // button 4 (second stomp button) toggles FX #6 on track 1.
     // button 5 (second stomp button) toggles FX #7 on track 1.
 
-    const int fx_bypass_index_for_button[NUM_BASIC_BUTTONS] = { -1, 3, 4, 5, 6, 7 };
+    const int fx_bypass_index_for_button[NUM_BUTTONS] = { -1, 3, 4, 5, 6, -1, 7, 8, -1 };
 
     switch (ii) {
 
@@ -442,13 +442,23 @@ void handleStompButtonStateChange(int ii) {
       case 4:
         sendFxBypassBool(1, fx_bypass_index_for_button[4], !(daw_state.fx_bypass[3]));
         break;
-
+        
+      case 6:
+        sendFxBypassBool(1, fx_bypass_index_for_button[6], !(daw_state.fx_bypass[5]));
+        break;
+      case 7:
+        sendFxBypassBool(1, fx_bypass_index_for_button[7], !(daw_state.fx_bypass[6]));
+        break;
+      
       case 5:
         daw_state.amp_channel = (daw_state.amp_channel + 1) % 3; // cycle 0, 1, 2, 0, 1, 2...
         float value = daw_state.amp_channel / 2.0; // normalize to 0, 0.5, 1.0
         sendFxParamFloat(1, 5, 2, value);
         break;
-
+        
+      case 8:
+        // can't bypass fx 9; this third knob button could do something different (meta key?)
+        break;
     }
 
   }
@@ -463,10 +473,10 @@ void handleButtonStateChange(int ii) {
     handleStompButtonStateChange(ii);
   } else if (ii < 9) {
     // knob selects 6-8
-
+    handleStompButtonStateChange(ii);
   } else {
     // joystick select
-    
+    // best to ignore this button: probably too easily kicked unintentionally
   }
 
 }
@@ -481,6 +491,9 @@ void initDawState() {
   daw_state.fx_bypass[2] = false;
   daw_state.fx_bypass[3] = false;
   daw_state.fx_bypass[4] = false;
+  daw_state.fx_bypass[5] = false;
+  daw_state.fx_bypass[6] = false;
+  daw_state.fx_bypass[7] = false;
   
 }
 
@@ -849,7 +862,7 @@ void sendFxBypassBool(int track, int fx, bool value) {
 //  msg = msg + (value ? "N" : "FF");
 //  msg = msg + fx;
   String msg = "_S&M_FXBYP";
-  msg = msg + fx;
+  msg = msg + fx; // fx = 1 thru 8 only
   sendOSCString("/action/str", msg.c_str());
   delay(10);
 }
