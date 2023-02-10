@@ -197,6 +197,9 @@ knob_state_s knob_state[NUM_KNOBS];
 // current state of DAW (based on OSC feedback)
 daw_state_s daw_state;
 
+time_ms last_OSC_send_time;
+time_ms last_OSC_receive_time;
+
 // ** visual display (LEDs) **
 
 // HSV color values
@@ -680,36 +683,20 @@ void listenForOSC() {
 
 /// handle the contents of an incoming OSC bundle
 void dispatchBundleContents(OSCBundle *bundleIN) {
-  //bundleIN->dispatch("/track/*/mute", muteHandler);
-  bundleIN->dispatch("/record", handleOSC_Record);
 
+  last_OSC_receive_time = millis();
+  
+  bundleIN->dispatch("/record", handleOSC_Record);
   bundleIN->dispatch("/track/1/fx/*/bypass", handleOSC_FxBypass);
-  /*
-  bundleIN->dispatch("/track/1/fx/2/bypass", handleOSC_FxBypass2);
-  bundleIN->dispatch("/track/1/fx/3/bypass", handleOSC_FxBypass3);
-  bundleIN->dispatch("/track/1/fx/4/bypass", handleOSC_FxBypass4);
-  bundleIN->dispatch("/track/1/fx/5/bypass", handleOSC_FxBypass5);
-  bundleIN->dispatch("/track/1/fx/6/bypass", handleOSC_FxBypass6);
-  bundleIN->dispatch("/track/1/fx/7/bypass", handleOSC_FxBypass7);
-  bundleIN->dispatch("/track/1/fx/8/bypass", handleOSC_FxBypass8);
-  */
   bundleIN->dispatch("/track/1/fx/4/fxparam/2/value", handleOSC_Fx4Fxparam2);
 }
 
 void dispatchMessage(OSCMessage *messageIN) {
 
-  messageIN->dispatch("/record", handleOSC_Record);
+  last_OSC_receive_time = millis();
 
+  messageIN->dispatch("/record", handleOSC_Record);
   messageIN->dispatch("/track/1/fx/*/bypass", handleOSC_FxBypass);
-  /*
-  messageIN->dispatch("/track/1/fx/2/bypass", handleOSC_FxBypass2);
-  messageIN->dispatch("/track/1/fx/3/bypass", handleOSC_FxBypass3);
-  messageIN->dispatch("/track/1/fx/4/bypass", handleOSC_FxBypass4);
-  messageIN->dispatch("/track/1/fx/5/bypass", handleOSC_FxBypass5);
-  messageIN->dispatch("/track/1/fx/6/bypass", handleOSC_FxBypass6);
-  messageIN->dispatch("/track/1/fx/7/bypass", handleOSC_FxBypass7);
-  messageIN->dispatch("/track/1/fx/8/bypass", handleOSC_FxBypass8);
-  */
   messageIN->dispatch("/track/1/fx/4/fxparam/2/value", handleOSC_Fx4Fxparam2);
 }
 
@@ -791,43 +778,44 @@ void updateLampColors() {
 
 void sendOSCMessage(OSCMessage &msg) {
 
-    SLIPSerial.beginPacket();
-    msg.send(SLIPSerial); // send the bytes to the SLIP stream
-    SLIPSerial.endPacket(); // mark the end of the OSC Packet
-    msg.empty(); // free space occupied by message
+  SLIPSerial.beginPacket();
+  msg.send(SLIPSerial); // send the bytes to the SLIP stream
+  SLIPSerial.endPacket(); // mark the end of the OSC Packet
+  msg.empty(); // free space occupied by message
+  last_OSC_send_time = millis();
 
 }
 
 /// send an OSC message to a specified OSC address, containing a single specified float parameter value
 void sendOSCFloat(const char *address, float value) {
-  
-    OSCMessage msg(address);
-    msg.add(value);
-    sendOSCMessage(msg);
+
+  OSCMessage msg(address);
+  msg.add(value);
+  sendOSCMessage(msg);
 
 }
 
 void sendOSCInt(const char *address, int value) {
   
-    OSCMessage msg(address);
-    msg.add(value);
-    sendOSCMessage(msg);
+  OSCMessage msg(address);
+  msg.add(value);
+  sendOSCMessage(msg);
 
 }
 
 void sendOSCString(const char *address, const char *value) {
   
-    OSCMessage msg(address);
-    msg.add(value);
-    sendOSCMessage(msg);
+  OSCMessage msg(address);
+  msg.add(value);
+  sendOSCMessage(msg);
 
 }
 
 void sendOSCBool(const char *address, bool value) {
   
-    OSCMessage msg(address);
-    msg.add(value);
-    sendOSCMessage(msg);
+  OSCMessage msg(address);
+  msg.add(value);
+  sendOSCMessage(msg);
 
 }
 void sendOSCTrigger(const char *address) {
@@ -902,6 +890,18 @@ void sendWah(float value) {
   sendOSCFloat("/track/1/fx/2/fxparam/1/value", value);
 }
 
+void housekeeping() {
+
+  const time_ms too_long = 1000;
+
+  if (last_OSC_send_time > last_OSC_receive_time + too_long) {
+    digitalWrite(LED_BUILTIN, 1);
+  } else {
+    digitalWrite(LED_BUILTIN, 0);
+  }  
+
+}
+
 // ** main **
 
 /// pin configuration
@@ -931,11 +931,20 @@ void setupPins() {
 
 }
 
+/// open OSC-over-USB connection
+void setupOSC() {
+ 
+  SLIPSerial.begin(115200);
+
+  last_OSC_send_time = millis();
+  last_OSC_receive_time = last_OSC_send_time;
+
+}
+
 /// main arduino init
 void setup() {
 
-  // open OSC-over-USB connection
-  SLIPSerial.begin(115200);
+  setupOSC();
 
   // activate arduino pins for input and output as appropriate
   setupPins();
@@ -963,6 +972,8 @@ void loop() {
   scanControls();
 
   listenForOSC();
+
+  housekeeping();
 
 //  idleAnimation(); // (optional)
  
