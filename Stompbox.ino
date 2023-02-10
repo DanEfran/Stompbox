@@ -761,15 +761,22 @@ void updateLampColors() {
     CHSV(H_PINK, S_VINTAGE_LAMP, V_FULL)
   };
   
-  for (int ii = 1; ii <= 5; ii++) {   
+  for (int ii = 1; ii <= 5; ii++) {
+
     if (ii == 5) {
+      
+      // I'm using lamp 5 (and button 5) for amp channel cycle (for now @#@t)
+
       if (daw_state.fx_bypass[button_config[ii].fx_index]) {
-        leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_DIM);
+        leds[ii] = amp_channel_hue[daw_state.amp_channel].scale8(V_DIM);
       } else {
         leds[ii] = amp_channel_hue[daw_state.amp_channel];
       }
       
     } else {
+
+      // the rest of the lamps are fx bypass toggles (for now @#@t)
+
       if (daw_state.fx_bypass[button_config[ii].fx_index]) {
         leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_DIM);
       } else {
@@ -790,7 +797,7 @@ void sendOSCMessage(OSCMessage &msg) {
   SLIPSerial.endPacket(); // mark the end of the OSC Packet
   msg.empty(); // free space occupied by message
   last_OSC_send_time = millis();
-
+  delay(10); // throttle traffic to avoid crashing the connection
 }
 
 /// send an OSC message to a specified OSC address, containing a single specified float parameter value
@@ -845,14 +852,14 @@ void sendFxBypassBool(int track, int fx, bool value) {
   String addr = "/action/";
   addr = addr + (40938 + track); // track 1: action 40939; track 2: action 40940, etc. No track 0.
   sendOSCInt(addr.c_str(), 1);
-  delay(10);
+  
 //  String msg = "_S&M_FXBYP_SETO";
 //  msg = msg + (value ? "N" : "FF");
 //  msg = msg + fx;
   String msg = "_S&M_FXBYP";
   msg = msg + fx; // fx = 1 thru 8 only
   sendOSCString("/action/str", msg.c_str());
-  delay(10);
+  
 }
 
 void sendFxParamFloat(int track, int fx, int param, float value) {
@@ -865,7 +872,6 @@ void sendFxParamFloat(int track, int fx, int param, float value) {
   addr = addr + param;
   addr = addr + "/value";
   sendOSCFloat(addr.c_str(), value);
-  delay(10);
 
 }
 
