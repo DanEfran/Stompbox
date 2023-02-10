@@ -426,7 +426,7 @@ void handleStompButtonStateChange(int ii) {
     // button 4 (second stomp button) toggles FX #6 on track 1.
     // button 5 (second stomp button) toggles FX #7 on track 1.
 
-    const int fx_bypass_index_for_button[NUM_BUTTONS] = { -1, 3, 4, 5, 6, -1, 7, 8, -1 };
+    const int fx_bypass_index_for_button[NUM_BUTTONS] = { -1, 2, 3, 4, 5, -1, 6, 7, 8 };
 
     switch (ii) {
 
@@ -449,16 +449,18 @@ void handleStompButtonStateChange(int ii) {
       case 7:
         sendFxBypassBool(1, fx_bypass_index_for_button[7], !(daw_state.fx_bypass[6]));
         break;
-      
+
+      case 8:
+        sendFxBypassBool(1, fx_bypass_index_for_button[8], !(daw_state.fx_bypass[7]));
+        break;
+
       case 5:
         daw_state.amp_channel = (daw_state.amp_channel + 1) % 3; // cycle 0, 1, 2, 0, 1, 2...
         float value = daw_state.amp_channel / 2.0; // normalize to 0, 0.5, 1.0
-        sendFxParamFloat(1, 5, 2, value);
+        sendFxParamFloat(1, 4, 2, value);
         break;
         
-      case 8:
-        // can't bypass fx 9; this third knob button could do something different (meta key?)
-        break;
+      
     }
 
   }
@@ -682,12 +684,14 @@ void dispatchBundleContents(OSCBundle *bundleIN) {
   bundleIN->dispatch("/record", handleOSC_Record);
 
 //  bundleIN->dispatch("/track/1/fx/*/bypass", handleOSC_FxBypass);
+  bundleIN->dispatch("/track/1/fx/2/bypass", handleOSC_FxBypass2);
   bundleIN->dispatch("/track/1/fx/3/bypass", handleOSC_FxBypass3);
   bundleIN->dispatch("/track/1/fx/4/bypass", handleOSC_FxBypass4);
   bundleIN->dispatch("/track/1/fx/5/bypass", handleOSC_FxBypass5);
   bundleIN->dispatch("/track/1/fx/6/bypass", handleOSC_FxBypass6);
   bundleIN->dispatch("/track/1/fx/7/bypass", handleOSC_FxBypass7);
-  bundleIN->dispatch("/track/1/fx/5/fxparam/2/value", handleOSC_Fx5Fxparam2);
+  bundleIN->dispatch("/track/1/fx/8/bypass", handleOSC_FxBypass8);
+  bundleIN->dispatch("/track/1/fx/4/fxparam/2/value", handleOSC_Fx4Fxparam2);
 }
 
 void dispatchMessage(OSCMessage *messageIN) {
@@ -695,12 +699,14 @@ void dispatchMessage(OSCMessage *messageIN) {
   messageIN->dispatch("/record", handleOSC_Record);
 
 //  messageIN->dispatch("/track/1/fx/*/bypass", handleOSC_FxBypass);
+  messageIN->dispatch("/track/1/fx/2/bypass", handleOSC_FxBypass2);
   messageIN->dispatch("/track/1/fx/3/bypass", handleOSC_FxBypass3);
   messageIN->dispatch("/track/1/fx/4/bypass", handleOSC_FxBypass4);
   messageIN->dispatch("/track/1/fx/5/bypass", handleOSC_FxBypass5);
   messageIN->dispatch("/track/1/fx/6/bypass", handleOSC_FxBypass6);
   messageIN->dispatch("/track/1/fx/7/bypass", handleOSC_FxBypass7);
-  messageIN->dispatch("/track/1/fx/5/fxparam/2/value", handleOSC_Fx5Fxparam2);
+  messageIN->dispatch("/track/1/fx/8/bypass", handleOSC_FxBypass8);
+  messageIN->dispatch("/track/1/fx/4/fxparam/2/value", handleOSC_Fx4Fxparam2);
 }
 
 // Handle incoming OSC messages...
@@ -728,37 +734,47 @@ void handleOSC_FxBypass(OSCMessage &msg) {
 
 }
 
-void handleOSC_FxBypass3(OSCMessage &msg) {
+void handleOSC_FxBypass2(OSCMessage &msg) {
   int value = msg.getFloat(0);
   daw_state.fx_bypass[0] = (value == 0);
   updateLampColors();
 }
-
-void handleOSC_FxBypass4(OSCMessage &msg) {
+void handleOSC_FxBypass3(OSCMessage &msg) {
   int value = msg.getFloat(0);
   daw_state.fx_bypass[1] = (value == 0);
   updateLampColors();
 }
 
-void handleOSC_FxBypass5(OSCMessage &msg) {
+void handleOSC_FxBypass4(OSCMessage &msg) {
   int value = msg.getFloat(0);
   daw_state.fx_bypass[2] = (value == 0);
   updateLampColors();
 }
 
-void handleOSC_FxBypass6(OSCMessage &msg) {
+void handleOSC_FxBypass5(OSCMessage &msg) {
   int value = msg.getFloat(0);
   daw_state.fx_bypass[3] = (value == 0);
   updateLampColors();
 }
 
-void handleOSC_FxBypass7(OSCMessage &msg) {
+void handleOSC_FxBypass6(OSCMessage &msg) {
   int value = msg.getFloat(0);
   daw_state.fx_bypass[4] = (value == 0);
   updateLampColors();
 }
 
-void handleOSC_Fx5Fxparam2(OSCMessage &msg) {
+void handleOSC_FxBypass7(OSCMessage &msg) {
+  int value = msg.getFloat(0);
+  daw_state.fx_bypass[5] = (value == 0);
+  updateLampColors();
+}
+
+void handleOSC_FxBypass8(OSCMessage &msg) {
+  int value = msg.getFloat(0);
+  daw_state.fx_bypass[6] = (value == 0);
+  updateLampColors();
+}
+void handleOSC_Fx4Fxparam2(OSCMessage &msg) {
 
   // float in message seems to be always 0?? ignore it
 
