@@ -941,7 +941,7 @@ void setupPins() {
   // all the NeoPixel LEDs are controlled through one output pin via FastLED
   pinMode(PIN_LED_DATA, OUTPUT);
 
-  // ...except the "reset light" which mirrors the built-in LED on pin 13
+  // ...and there's a "reset light", a normal amber LED which echoes the built-in LED on pin 13
   pinMode(PIN_LED_BUILTIN, OUTPUT);
 
 }
