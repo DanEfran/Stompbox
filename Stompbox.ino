@@ -391,14 +391,14 @@ void consumeKnobChanges(int ii, bool resetValue = false) {
 }
 
 void handleRecordButtonStateChange() {
-  if (button_state[0] == PRESSING) {
+  if (button_state[0] == RELEASING) {
     sendRecordToggle();
   } 
 }
 
 void handleStompButtonStateChange(int ii) {
 
-  if (button_state[ii] == PRESSING) {
+  if (button_state[ii] == RELEASING) {
       
     // debounce.
     // @#@t there are several places we could do this; this may not be the best.
