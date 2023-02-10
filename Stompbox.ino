@@ -167,6 +167,11 @@ const byte PIN_PEDAL[NUM_PEDALS] = {
   PIN_PEDAL_X, PIN_PEDAL_Y, PIN_PEDAL_Z
 };
 
+// symbols for those indices
+const int PEDAL_X = 0;
+const int PEDAL_Y = 1;
+const int PEDAL_Z = 2;
+
 const byte PIN_ROTARY_A[NUM_KNOBS] = {
   ROTARY_1_A, ROTARY_2_A, ROTARY_3_A
 };
@@ -488,7 +493,6 @@ void initControls() {
 
   for (int ii = 0; ii < NUM_PEDALS; ii++) {
     pedal_state[ii].value = analogRead(PIN_PEDAL[ii]);
-    pedal_state[ii].delta = 0;
   }
 
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
@@ -541,15 +545,20 @@ void scanControls() {
 
   // pedals
   for (int ii = 0; ii < NUM_PEDALS; ii++) {
-    int result = analogRead(PIN_PEDAL[ii]); 
-    int was = pedal_state[ii].value;
-    pedal_state[ii].delta = result - was;
-    pedal_state[ii].value = result;
 
-    // @#@t crudely debounced
-    if (abs(result - was) > 10) {
-      
-      if (ii == 2) {
+    const int threshold = 10;
+
+//    analogRead(PIN_PEDAL[ii]); // extra read to stabilize ADC?
+    int result = analogRead(PIN_PEDAL[ii]); 
+  
+    int was = pedal_state[ii].value;
+    int delta = result - was;
+
+    if (abs(delta) > threshold) {
+
+      pedal_state[ii].value = result;
+
+      if (ii == PEDAL_Z) {
         float answer = pedal_state[ii].value / 1023.0;
         answer = 1.0 - answer; // reverse direction
         sendWah(answer);
@@ -859,14 +868,14 @@ void sendFxParamFloat(int track, int fx, int param, float value) {
 
 }
 
-/// send a simple OSC message. Proof of concept: send external pedal as master volume. (It's easy to see and even hear if we're transmitting OSC properly.)
-void sendMasterVolume(uint16_t raw) {
-
-  // debounce to protect serial connection
-  // if we send these messages too fast, we crash the serial connection (error 31 in the node.js bridge) or even crash/freeze the arduino (somehow???)
-  // so we throttle these to send no more often that about 5 or 10 ms. 
+/// debounce to protect serial connection
+bool tooSoon() {
+  // if we send OSC messages too fast, we crash the serial connection (error 31 in the node.js bridge) or even crash/freeze the arduino (somehow???)
+  // so we throttle them to send no more often that about 5 or 10 ms. 
   // (Adjust to taste for your risk tolerance; the absolute minimum without problems in a simple test seems to be about 4 or 5 ms.
   //  Crashes are nearly immediate at 1 or 0. 5 might be safe enough but 10 seems safer. Perhaps larger message bundles will need more time?)
+  // this is mainly needed by analog (pedal) inputs: it's very unlikely we'll try to send other signals so fast. But feel free to throttle all message;
+  // note that this method is lossy and not suitable for all inputs. (If any: let's consider it temporary and improve it someday. @#@t)
   const time_ms minimum_time_between_sends = 10;
   static time_ms previous = millis();
   time_ms current = millis();
@@ -876,45 +885,15 @@ void sendMasterVolume(uint16_t raw) {
   }
   previous = current;
 
-
-  // @#@t proof of concept (from sample code)
-
-  //static EMA<2, int16_t> ema;
-  //static Hysteresis hyst;
-  static uint8_t prevValue = 0xFF;
-
-  //uint16_t filtered = ema.filter(raw);
-  //uint8_t value = hyst.getOutputLevel(filtered);
-  byte value = raw >> 2;
-  
-  if (value != prevValue) {
-    sendOSCFloat("/master/volume", (float) value / 127.0);
-    prevValue = value;
-  }
 }
 
 void sendWah(float value) {
 
-  // debounce to protect serial connection
-  // if we send these messages too fast, we crash the serial connection (error 31 in the node.js bridge) or even crash/freeze the arduino (somehow???)
-  // so we throttle these to send no more often that about 5 or 10 ms. 
-  // (Adjust to taste for your risk tolerance; the absolute minimum without problems in a simple test seems to be about 4 or 5 ms.
-  //  Crashes are nearly immediate at 1 or 0. 5 might be safe enough but 10 seems safer. Perhaps larger message bundles will need more time?)
-  const time_ms minimum_time_between_sends = 10;
-  static time_ms previous = millis();
-  time_ms current = millis();
-  time_ms elapsed = current - previous;
-  if (elapsed < minimum_time_between_sends) {
+  if (tooSoon()) {
     return;
   }
-  previous = current;
-
-  static float prevValue = 0.0;
-
-  if (value != prevValue) {
-    sendOSCFloat("/track/1/fx/3/fxparam/1/value", value);
-    prevValue = value;
-  }
+  
+  sendOSCFloat("/track/1/fx/3/fxparam/1/value", value);
 }
 
 // ** main **
