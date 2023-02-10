@@ -892,7 +892,7 @@ void sendWah(float value) {
 
 void housekeeping() {
 
-  const time_ms too_long = 1000;
+  const time_ms too_long = 3000;
 
   if (last_OSC_send_time > last_OSC_receive_time + too_long) {
     digitalWrite(LED_BUILTIN, 1);
