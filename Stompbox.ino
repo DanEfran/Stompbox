@@ -104,10 +104,26 @@ typedef struct knob_state_s {
 typedef struct daw_state_s {
 
   bool recording;
-  bool fx_bypass[8];
+  bool fx_bypass[9]; // we use 2-8, 0 and 1 are ignored
   int amp_channel; // modes for plugin "The Anvil (Ignite Amps)" (param 2): saved here as 0, 1, 2 -- but over OSC, normalize to 0.0, 0.5, 1.0
 
 } daw_state_s;
+
+typedef enum button_mode_e { 
+
+  IGNORED_BUTTON,               // does nothing
+  FX_BYPASS,                    // sends bypass on/off messages
+  FXPARAM_CYCLE_3               // sends fxparam value cycle among 0, 0.5, 1
+
+} button_mode_e;
+
+typedef struct button_configuration_s {
+
+  int fx_index; // fx index in DAW track 1 fx chain: we use indices 2 through 8
+  int fx_param; // parameter index in that fx plugin's controls
+  button_mode_e button_mode; // how the button behaves
+
+} button_configuration_s;
 
 // ** constants **
 
@@ -180,6 +196,9 @@ const byte PIN_ROTARY_B[NUM_KNOBS] = {
   ROTARY_1_B, ROTARY_2_B, ROTARY_3_B
 };
 
+// fx parameter number for a particular control we're interested in, 'The Anvil' amp's channel select
+const int FXPARAM_ANVIL_AMP_CHANNEL = 2;
+
 // ** globals **
 
 // the NeoPixel LEDs (FastLED display buffer: set these and call show to update display)
@@ -197,8 +216,12 @@ knob_state_s knob_state[NUM_KNOBS];
 // current state of DAW (based on OSC feedback)
 daw_state_s daw_state;
 
+// timeliness of OSC feedback. (too slow probably means disconnected PC bridge)
 time_ms last_OSC_send_time;
 time_ms last_OSC_receive_time;
+
+// meta control
+button_configuration_s button_config[NUM_BUTTONS];
 
 // ** visual display (LEDs) **
 
@@ -420,50 +443,22 @@ void handleStompButtonStateChange(int ii) {
     }
     previous = current;
 
-    // so, what do the buttons do? Adjust to taste...
-    // button 1 (first stomp button next to Record button) toggles FX #3 on track 1.
-    // (Why #3? FX #1 is MIDI Bad Fader CC Filter, a standard FX Chain item for my tracks due to a flaky fader;
-    //  FX #2 on a guitar track is a tuner; generally no need to bypass that)
-    // button 2 (second stomp button) toggles FX #4 on track 1.
-    // button 3 (second stomp button) toggles FX #5 on track 1.
-    // button 4 (second stomp button) toggles FX #6 on track 1.
-    // button 5 (second stomp button) toggles FX #7 on track 1.
+    int fx = button_config[ii].fx_index;
 
-    const int fx_bypass_index_for_button[NUM_BUTTONS] = { -1, 2, 3, 4, 5, -1, 6, 7, 8 };
+    int fxparam = FXPARAM_ANVIL_AMP_CHANNEL;
 
-    switch (ii) {
+    switch (button_config[ii].button_mode) {
 
-      case 1:
-        sendFxBypassBool(1, fx_bypass_index_for_button[1], !(daw_state.fx_bypass[0]));
-        break;
-      case 2:
-        sendFxBypassBool(1, fx_bypass_index_for_button[2], !(daw_state.fx_bypass[1]));
-        break;
-      case 3:
-        sendFxBypassBool(1, fx_bypass_index_for_button[3], !(daw_state.fx_bypass[2]));
-        break;
-      case 4:
-        sendFxBypassBool(1, fx_bypass_index_for_button[4], !(daw_state.fx_bypass[3]));
-        break;
-        
-      case 6:
-        sendFxBypassBool(1, fx_bypass_index_for_button[6], !(daw_state.fx_bypass[5]));
-        break;
-      case 7:
-        sendFxBypassBool(1, fx_bypass_index_for_button[7], !(daw_state.fx_bypass[6]));
+      case FX_BYPASS:
+        sendFxBypassBool(1, fx, !(daw_state.fx_bypass[fx]));
         break;
 
-      case 8:
-        sendFxBypassBool(1, fx_bypass_index_for_button[8], !(daw_state.fx_bypass[7]));
-        break;
-
-      case 5:
+      case FXPARAM_CYCLE_3:
         daw_state.amp_channel = (daw_state.amp_channel + 1) % 3; // cycle 0, 1, 2, 0, 1, 2...
         float value = daw_state.amp_channel / 2.0; // normalize to 0, 0.5, 1.0
-        sendFxParamFloat(1, 4, 2, value);
+        sendFxParamFloat(1, fx, fxparam, value);
         break;
-        
-      
+
     }
 
   }
@@ -487,19 +482,31 @@ void handleButtonStateChange(int ii) {
 }
 
 /// set up data structure to track remote DAW's status
-void initDawState() {
+void setupDawState() {
   
   // we're guessing about this initially
   daw_state.recording = false;
-  daw_state.fx_bypass[0] = false;
-  daw_state.fx_bypass[1] = false;
-  daw_state.fx_bypass[2] = false;
-  daw_state.fx_bypass[3] = false;
-  daw_state.fx_bypass[4] = false;
-  daw_state.fx_bypass[5] = false;
-  daw_state.fx_bypass[6] = false;
-  daw_state.fx_bypass[7] = false;
+  for (int ii = 2; ii <= 8; ii++) {
+    daw_state.fx_bypass[ii] = false;
+  }
   
+  // note: record button (button 0) is not included in this scheme
+  // most buttons are FX bypass buttons, emulating the fundamental control scheme of a guitar pedalboard
+  for (int ii = 1; ii <= 8; ii++) {
+    button_config[ii].button_mode = FX_BYPASS;
+    button_config[ii].fx_index = (ii > 5) ? ii : ii + 1; // 2, 3, 4, 5, (6), 6, 7, 8
+    // .fx_param irrelevant for this mode
+  }
+
+  // exception: amp channel button (button 5)
+  button_config[5].button_mode = FXPARAM_CYCLE_3;
+  button_config[5].fx_index = 4; // 'The Anvil' amp: current position in fx chain
+  button_config[5].fx_param = FXPARAM_ANVIL_AMP_CHANNEL; // amp: channel select control
+
+  // exception: joystick select button is ignored (probably too easily kicked)
+  button_config[9].button_mode = IGNORED_BUTTON;
+  // .fx_index and .fx_param irrelevant for this mode
+
 }
 
 /// set up data structures for control inputs
@@ -729,7 +736,7 @@ void handleOSC_FxBypass(OSCMessage &msg) {
   int fx = buffer[12] - '0'; // e.g. "/track/1/fx/3/bypass" -> 3
 
   int value = msg.getFloat(0);
-  daw_state.fx_bypass[fx - 2] = (value == 0);
+  daw_state.fx_bypass[fx] = (value == 0);
   updateLampColors();
 
  // char buffer2[2] = { fx, 0 };
@@ -756,14 +763,14 @@ void updateLampColors() {
   
   for (int ii = 1; ii <= 5; ii++) {   
     if (ii == 5) {
-      if (daw_state.fx_bypass[ii-1]) {
+      if (daw_state.fx_bypass[button_config[ii].fx_index]) {
         leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_DIM);
       } else {
         leds[ii] = amp_channel_hue[daw_state.amp_channel];
       }
       
     } else {
-      if (daw_state.fx_bypass[ii-1]) {
+      if (daw_state.fx_bypass[button_config[ii].fx_index]) {
         leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_DIM);
       } else {
         leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_FULL);
@@ -949,7 +956,7 @@ void setup() {
   // activate arduino pins for input and output as appropriate
   setupPins();
   
-  initDawState();
+  setupDawState();
 
   // set up and clear controls status
   initControls();
