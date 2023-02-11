@@ -97,18 +97,24 @@ typedef struct knob_state_s {
 // but OSC dispatch paradigm does not make it easy to respond appropriately and track both.
 // we can try but it's not clear how much effort it's worth.
 // ...indeed, Reaper actually seems to send 'Record OFF Play OFF Stop ON Pause ON' when pausing.
-// that bundle would have to be processed atomically as a bundle, not as four messages, to properly track the state.
+// that bundle would have to be processed atomically as a bundle, not as four messages, to properly track the state without lots of complexity.
+// (I haven't checked whether they always arrive in the same order, but either way this is a fairly complex situation to handle correctly.)
 // maybe someday we can do that, but it's too much work for now. So we track Record or not, but ignore Pause etc.
-// (For that matter, Reaper doesn't seem to send these things spontaneously in all cases. So it's risky to expect them.)
 
+/// status of the DAW controls we interact with.
+// (imperfect knowledge: what we've been told, with guesses for what we haven't been told.)
 typedef struct daw_state_s {
 
-  bool recording;
-  bool fx_bypass[9]; // we use 2-8, 0 and 1 are ignored
+  bool recording; // our recording studio red light
+  bool fx_bypass[9]; // we control bypass on fx 2-8. Array elements 0 and 1 are ignored.
   int amp_channel; // modes for plugin "The Anvil (Ignite Amps)" (param 2): saved here as 0, 1, 2 -- but over OSC, normalize to 0.0, 0.5, 1.0
 
 } daw_state_s;
 
+/// a button can behave in one of several useful ways, currently:
+// as an fx bypass button (like a typical guitar pedal main stomp);
+// to cycle between fx parameter values;
+// or doing nothing at all.
 typedef enum button_mode_e { 
 
   IGNORED_BUTTON,               // does nothing
@@ -117,6 +123,7 @@ typedef enum button_mode_e {
 
 } button_mode_e;
 
+/// each button knows which fx (and which fx parameter, where appropriate) it should control, and what it should do to it. 
 typedef struct button_configuration_s {
 
   int fx_index; // fx index in DAW track 1 fx chain: we use indices 2 through 8
@@ -220,7 +227,7 @@ daw_state_s daw_state;
 time_ms last_OSC_send_time;
 time_ms last_OSC_receive_time;
 
-// meta control
+// behavior modes and control targets of the buttons
 button_configuration_s button_config[NUM_BUTTONS];
 
 // ** visual display (LEDs) **
@@ -421,12 +428,14 @@ void consumeKnobChanges(int ii, bool resetValue = false) {
   }
 }
 
+/// something happened to the record button
 void handleRecordButtonStateChange() {
   if (button_state[0] == RELEASING) {
     sendRecordToggle();
   } 
 }
 
+/// something happened to a stomp button
 void handleStompButtonStateChange(int ii) {
 
   if (button_state[ii] == RELEASING) {
@@ -465,6 +474,7 @@ void handleStompButtonStateChange(int ii) {
 
 }
 
+/// something happened to a button
 void handleButtonStateChange(int ii) {
   
   if (ii == 0) {
@@ -486,10 +496,16 @@ void setupDawState() {
   
   // we're guessing about this initially
   daw_state.recording = false;
+
+  // we're guessing about these initially
   for (int ii = 2; ii <= 8; ii++) {
-    daw_state.fx_bypass[ii] = false;
+    daw_state.fx_bypass[ii] = true;
   }
-  
+}
+
+/// configure buttons with default behavior modes and control targets
+void setupButtons() {
+
   // note: record button (button 0) is not included in this scheme
   // most buttons are FX bypass buttons, emulating the fundamental control scheme of a guitar pedalboard
   for (int ii = 1; ii <= 8; ii++) {
@@ -510,7 +526,7 @@ void setupDawState() {
 }
 
 /// set up data structures for control inputs
-void initControls() {
+void setupControls() {
 
   for (int ii = 0; ii < NUM_BUTTONS; ii++) {
     button_state[ii] = digitalRead(PIN_BUTTON[ii] == 0) ? PRESSED : UNPRESSED;
@@ -569,11 +585,12 @@ void scanControls() {
   }
 
   // pedals
+
   for (int ii = 0; ii < NUM_PEDALS; ii++) {
 
     const int threshold = 10;
 
-//    analogRead(PIN_PEDAL[ii]); // extra read to stabilize ADC?
+//    analogRead(PIN_PEDAL[ii]); // @#@? extra read to stabilize ADC?
     int result = analogRead(PIN_PEDAL[ii]); 
   
     int was = pedal_state[ii].value;
@@ -587,6 +604,9 @@ void scanControls() {
         float answer = pedal_state[ii].value / 1023.0;
         answer = 1.0 - answer; // reverse direction
         sendWah(answer);
+      } else {
+        // @#@u PEDAL_X and PEDAL_Y (the joystick) are not working. Possibly a wiring problem.
+        // The joystick is an optional bonus feature anyway, so for now we ignore these non-functional inputs. 
       }
        
     }
@@ -603,7 +623,6 @@ void scanControls() {
     
     // @#@#@u handler
 
-
     consumeKnobChanges(ii);
 
   }
@@ -619,6 +638,8 @@ void scanControls() {
 
 typedef enum listening_status_e { BUNDLE_OR_MESSAGE_START, BUNDLE, MESSAGE } listening_status_e;
 
+const time_ms MINIMUM_TIME_BETWEEN_OSC_SENDS = 10; // adjust to taste, but not less than about 5.
+
 // receive and dispatch OSC bundles
 void listenForOSC() {
 
@@ -628,7 +649,12 @@ void listenForOSC() {
 
   bool eot =  SLIPSerial.endofPacket();
   while (SLIPSerial.available() && !eot) {
+
     uint8_t data = SLIPSerial.read();
+
+    // Reaper may send either OSC bundles or raw messages, unpredictably, so we must accept both equally
+    // (surprisingly, the arduino OSC library does not handle this logic; it (unreasonably) expects you 
+    // to know in advance which you'll be receiving. So we must do this peek-ahead here and track some state.)
     if (listeningFor == BUNDLE_OR_MESSAGE_START) {
       if (data == 35) {
         // "#"
@@ -637,30 +663,37 @@ void listenForOSC() {
         // "/"
         listeningFor = MESSAGE;
       } else {
-        // @#@u error: neither        
+        char report[99];
+        sprintf(report, "expected # (35) or / (47), got %c (%d)", data, data);
+        sendOSCString("/foobar/error", "OSC got start of neither bundle nor message!");     
+        sendOSCString("/foobar/error", report);
       }
     }
+
+    // once we know what we're getting, we can just keep reading.
     if (listeningFor == BUNDLE) {
       bundleIN->fill(data);
     } else if (listeningFor == MESSAGE) {
       messageIN->fill(data);
     }
+
     eot =  SLIPSerial.endofPacket();
   }
 
   if (eot) {
     if ( (listeningFor == BUNDLE) && bundleIN->hasError() ) {
       
+      // turn on a warning light for an OSC error
       digitalWrite(LED_BUILTIN, 1); // @#@d
+
       int err = bundleIN->getError();
       char report[99];
       sprintf(report, "%d: '%s' (%d)", err, bundleIN->incomingBuffer, bundleIN->incomingBufferSize);
       sendOSCString("/foobar/error", report);
       sendOSCString("/foobar/error", bundleIN->errorDetails);
       bundleIN->errorDetails[0] = 0;
-    } else if (listeningFor == BUNDLE) {
 
-      //flashBuiltInLED(); // @#@t
+    } else if (listeningFor == BUNDLE) {
 
       char report[99];
       sprintf(report, "got; (%d) '%s'", bundleIN->incomingBufferSize, bundleIN->incomingBuffer);
@@ -671,8 +704,6 @@ void listenForOSC() {
       listeningFor = BUNDLE_OR_MESSAGE_START;
 
     } else if (listeningFor == MESSAGE) {
-
-      //flashBuiltInLED(); // @#@t
 
       char report[99];
       sprintf(report, "got; (%d) '%s'", messageIN->incomingBufferSize, messageIN->incomingBuffer);
@@ -689,7 +720,7 @@ void listenForOSC() {
 
 }
 
-/// handle the contents of an incoming OSC bundle
+/// act on the contents of an incoming OSC bundle
 void dispatchBundleContents(OSCBundle *bundleIN) {
 
   last_OSC_receive_time = millis();
@@ -699,6 +730,7 @@ void dispatchBundleContents(OSCBundle *bundleIN) {
   bundleIN->dispatch("/track/1/fx/4/fxparam/2/value", handleOSC_Fx4Fxparam2);
 }
 
+/// act on an incoming OSC message
 void dispatchMessage(OSCMessage *messageIN) {
 
   last_OSC_receive_time = millis();
@@ -710,6 +742,7 @@ void dispatchMessage(OSCMessage *messageIN) {
 
 // Handle incoming OSC messages...
 
+/// handle Record status update
 void handleOSC_Record(OSCMessage &msg) {
 
   byte status = msg.getFloat(0);
@@ -717,6 +750,7 @@ void handleOSC_Record(OSCMessage &msg) {
   updateRecordButtonColor();
 }
 
+/// make Record lamp show Record status
 void updateRecordButtonColor() {
 
   if (daw_state.recording) {
@@ -727,25 +761,23 @@ void updateRecordButtonColor() {
   FastLED.show();
 }
 
+/// handle fx bypass status update
 void handleOSC_FxBypass(OSCMessage &msg) {
 
   // which plugin index? (1-based)
-  
   const int buffer_size = strlen("/track/1/fx/*/bypass") + 1;
   char buffer[buffer_size];
   msg.getAddress(buffer);
   int fx = buffer[12] - '0'; // e.g. "/track/1/fx/3/bypass" -> 3
 
+  // track the change
   int value = msg.getFloat(0);
   daw_state.fx_bypass[fx] = (value == 0);
   updateLampColors();
 
- // char buffer2[2] = { fx, 0 };
- // sendOSCString("/foobar/bypass", buffer2);
-
 }
 
-
+/// handle Anvil amp channel param
 void handleOSC_Fx4Fxparam2(OSCMessage &msg) {
 
   // float in message seems to be always 0?? ignore it
@@ -754,20 +786,23 @@ void handleOSC_Fx4Fxparam2(OSCMessage &msg) {
 
 }
 
+/// make lamps reflect status of DAW controls
+// (as well as we can; we may not have full knowledge of the ground truth)
 void updateLampColors() {
 
+  // three pretty colors for the amp channels (clean = green, rhythm = blue, lead = hot pink)
   static CRGB amp_channel_hue[3] = {
     CHSV(H_AQUA, S_VINTAGE_LAMP, V_FULL),
     CHSV(H_BLUE, S_VINTAGE_LAMP, V_FULL), 
     CHSV(H_PINK, S_VINTAGE_LAMP, V_FULL)
   };
   
+  // set lamp colors
   for (int ii = 1; ii <= 5; ii++) {
 
     if (ii == 5) {
-      
-      // I'm using lamp 5 (and button 5) for amp channel cycle (for now @#@t)
 
+      // I'm using lamp 5 (and button 5) for amp channel cycle (for now @#@t)
       if (daw_state.fx_bypass[button_config[ii].fx_index]) {
         leds[ii] = amp_channel_hue[daw_state.amp_channel].scale8(V_DIM);
       } else {
@@ -791,6 +826,7 @@ void updateLampColors() {
 
 // Send OSC messages...
 
+/// send an OSC message over the serial port
 void sendOSCMessage(OSCMessage &msg) {
 
   SLIPSerial.beginPacket();
@@ -798,7 +834,7 @@ void sendOSCMessage(OSCMessage &msg) {
   SLIPSerial.endPacket(); // mark the end of the OSC Packet
   msg.empty(); // free space occupied by message
   last_OSC_send_time = millis();
-  delay(10); // throttle traffic to avoid crashing the connection
+  delay(MINIMUM_TIME_BETWEEN_OSC_SENDS); // throttle traffic to avoid crashing the connection. @#@t short blocking delay here is probably fine, but maybe not the best solution
 }
 
 /// send an OSC message to a specified OSC address, containing a single specified float parameter value
@@ -810,6 +846,7 @@ void sendOSCFloat(const char *address, float value) {
 
 }
 
+/// send an OSC message to a specified OSC address, containing a single specified int parameter value
 void sendOSCInt(const char *address, int value) {
   
   OSCMessage msg(address);
@@ -818,6 +855,7 @@ void sendOSCInt(const char *address, int value) {
 
 }
 
+/// send an OSC message to a specified OSC address, containing a single specified string parameter value
 void sendOSCString(const char *address, const char *value) {
   
   OSCMessage msg(address);
@@ -826,6 +864,7 @@ void sendOSCString(const char *address, const char *value) {
 
 }
 
+/// send an OSC message to a specified OSC address, containing a single specified boolean parameter value
 void sendOSCBool(const char *address, bool value) {
   
   OSCMessage msg(address);
@@ -833,6 +872,8 @@ void sendOSCBool(const char *address, bool value) {
   sendOSCMessage(msg);
 
 }
+
+/// send an OSC message to a specified OSC address, containing no parameter values
 void sendOSCTrigger(const char *address) {
 
   OSCMessage msg(address);
@@ -840,10 +881,12 @@ void sendOSCTrigger(const char *address) {
 
 }
 
+/// send an OSC message asking the DAW to start or stop recording
 void sendRecordToggle() {
   sendOSCTrigger("/record");
 }
 
+/// send an OSC message asking the DAW to enable or disable the specified fx plugin.
 void sendFxBypassBool(int track, int fx, bool value) {
 
   // native Reaper OSC FX_BYPASS command doesn't work, or I'm not implementing it properly.
@@ -854,17 +897,17 @@ void sendFxBypassBool(int track, int fx, bool value) {
   addr = addr + (40938 + track); // track 1: action 40939; track 2: action 40940, etc. No track 0.
   sendOSCInt(addr.c_str(), 1);
   
-//  String msg = "_S&M_FXBYP_SETO";
-//  msg = msg + (value ? "N" : "FF");
-//  msg = msg + fx;
   String msg = "_S&M_FXBYP";
   msg = msg + fx; // fx = 1 thru 8 only
   sendOSCString("/action/str", msg.c_str());
   
 }
 
+/// send an OSC message asking the DAW to set the specified fx plugin parameter to the specified (normalized float) value
 void sendFxParamFloat(int track, int fx, int param, float value) {
-  // n/track/@/fx/@/fxparam/@/value -- n is for normalized (0.0-1.0)
+
+  // Reaper OSC pattern "n/track/@/fx/@/fxparam/@/value" -- n is for normalized (0.0-1.0)
+
   String addr = "/track/";
   addr = addr + track;
   addr = addr + "/fx/";
@@ -876,6 +919,10 @@ void sendFxParamFloat(int track, int fx, int param, float value) {
 
 }
 
+// currently, we just wait a bit after each send, so we don't need tooSoon() anymore.
+// (there are several ways to deal with traffic throttling; we might change schemes again at some point)
+
+/*
 /// debounce to protect serial connection
 bool tooSoon() {
   // if we send OSC messages too fast, we crash the serial connection (error 31 in the node.js bridge) or even crash/freeze the arduino (somehow???)
@@ -894,17 +941,18 @@ bool tooSoon() {
   previous = current;
 
 }
+*/
 
+/// send an OSC message controlling the "NA Wah" fx plugin (currently hardcoded) at position 2.
 void sendWah(float value) {
-
-  if (tooSoon()) {
-    return;
-  }
   
   sendOSCFloat("/track/1/fx/2/fxparam/1/value", value);
+
 }
 
-void housekeeping() {
+/// keep track of OSC traffic and warn if commands are not receiving timely feedback 
+// (indicating likely serial port disconnection: PC Bridge stopped, DAW not running, DAW OSC ports misconfigured, etc.)
+void watchForDisconnection() {
 
   const time_ms too_long = 3000;
 
@@ -939,6 +987,7 @@ void housekeeping() {
     digitalWrite(LED_BUILTIN, connected ? 0 : 1);
     status_changed = false;
   }
+
 }
 
 // ** main **
@@ -989,9 +1038,10 @@ void setup() {
   setupPins();
   
   setupDawState();
+  setupButtons();
 
   // set up and clear controls status
-  initControls();
+  setupControls();
 
   // configure LEDs
 	FastLED.addLeds<WS2812,PIN_LED_DATA,RGB>(leds,NUM_LEDS);
@@ -1012,9 +1062,9 @@ void loop() {
 
   listenForOSC();
 
-  housekeeping();
+  watchForDisconnection();
 
-//  idleAnimation(); // (optional)
+//  idleAnimation(); // (optional; not real-time optimized)
  
 } // loop
 
