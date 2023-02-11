@@ -97,6 +97,7 @@ typedef struct daw_state_s {
   bool recording; // our recording studio red light
   bool fx_bypass[9]; // we control bypass on fx 2-8. Array elements 0 and 1 are ignored.
   int amp_channel; // modes for plugin "The Anvil (Ignite Amps)" (param 2): saved here as 0, 1, 2 -- but over OSC, normalize to 0.0, 0.5, 1.0
+  float screamer_drive; // value for fx 3 "TS-999 SubScreamer" param 2
 
 } daw_state_s;
 
@@ -108,7 +109,8 @@ typedef enum button_mode_e {
 
   IGNORED_BUTTON,               // does nothing
   FX_BYPASS,                    // sends bypass on/off messages
-  FXPARAM_CYCLE_3               // sends fxparam value cycle among 0, 0.5, 1
+  FXPARAM_CYCLE_3,              // sends fxparam value cycle among 0, 0.5, 1
+  FXPARAM_CYCLE_10              // sends fxparam value cycle among .0, .1, .2, ..., .9, 1.0, .0, .1, ...
 
 } button_mode_e;
 
@@ -329,6 +331,28 @@ void handleStompButtonStateChange(int ii) {
         sendFxParamFloat(1, fx, fxparam, value);
         break;
       
+      case FXPARAM_CYCLE_10:
+        
+        // @#@d for testing
+        
+        daw_state.screamer_drive = (daw_state.screamer_drive + 0.1);
+        if (daw_state.screamer_drive > 1.01) {
+          daw_state.screamer_drive = 0.0;
+        }
+
+        value = daw_state.screamer_drive;
+        sendFxParamFloat(1, 3, 2, value);
+        
+        char report[99];
+        String sss = "float ";
+        sss = sss + value;
+        sss = sss + " representing stored ";
+        sss = sss + daw_state.screamer_drive;
+        sprintf(report, "sent %s", sss.c_str());
+        sendOSCString("/foobar/cycle10", report);
+
+        break;
+      
       case IGNORED_BUTTON:
         break;      
 
@@ -386,6 +410,11 @@ void setupButtons() {
   // exception: joystick select button is ignored (probably too easily kicked)
   button_config[9].button_mode = IGNORED_BUTTON;
   // .fx_index and .fx_param irrelevant for this mode
+
+  // @#@d exception: for debugging, button 1 is a cycle 10 on a particualr soon-to-be knob
+  button_config[1].button_mode = FXPARAM_CYCLE_10;
+  button_config[1].fx_index = 3;
+  button_config[1].fx_param = 2;
 
 }
 
@@ -507,6 +536,7 @@ void dispatchBundleContents(OSCBundle *bundleIN) {
   bundleIN->dispatch("/record", handleOSC_Record);
   bundleIN->dispatch("/track/1/fx/*/bypass", handleOSC_FxBypass);
   bundleIN->dispatch("/track/1/fx/4/fxparam/2/value", handleOSC_Fx4Fxparam2);
+  bundleIN->dispatch("/track/1/fx/3/fxparam/2/value", handleOSC_Fx3Fxparam2);
 }
 
 /// act on an incoming OSC message
@@ -517,6 +547,7 @@ void dispatchMessage(OSCMessage *messageIN) {
   messageIN->dispatch("/record", handleOSC_Record);
   messageIN->dispatch("/track/1/fx/*/bypass", handleOSC_FxBypass);
   messageIN->dispatch("/track/1/fx/4/fxparam/2/value", handleOSC_Fx4Fxparam2);
+  messageIN->dispatch("/track/1/fx/3/fxparam/2/value", handleOSC_Fx3Fxparam2);
 }
 
 // Handle incoming OSC messages...
@@ -563,6 +594,13 @@ void handleOSC_Fx4Fxparam2(OSCMessage &msg) {
   msg.empty();
 
   updateLampColors();
+
+}
+
+/// handle SubScreamer drive param
+void handleOSC_Fx3Fxparam2(OSCMessage &msg) {
+
+  daw_state.screamer_drive = msg.getFloat(0);
 
 }
 
