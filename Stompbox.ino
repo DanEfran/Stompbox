@@ -603,6 +603,7 @@ void scanControls() {
     
     // @#@#@u handler
 
+
     consumeKnobChanges(ii);
 
   }
@@ -907,12 +908,37 @@ void housekeeping() {
 
   const time_ms too_long = 3000;
 
+  time_ms now = millis();
+  
+  static bool connected = false;
+  static bool status_changed = true;
+  
+  // if there hasn't been a reply in a while...
   if (last_OSC_send_time > last_OSC_receive_time + too_long) {
-    digitalWrite(LED_BUILTIN, 1);
-  } else {
-    digitalWrite(LED_BUILTIN, 0);
-  }  
 
+    // ...it means we got disconnected, but only IF the last send itself was a while ago...
+    // (we need to give the reply a chance to arrive, so the above test is invalid immediately after a send)
+    if (now > last_OSC_send_time + too_long) { 
+
+      if (connected) {
+        status_changed = true;
+      }
+      connected = false;
+    }
+
+  } else {
+    // ...but if there HAS been a reply recently, we're connected
+
+    if (!connected) {
+      status_changed = true;
+    }
+    connected = true;
+  }
+
+  if (status_changed) {
+    digitalWrite(LED_BUILTIN, connected ? 0 : 1);
+    status_changed = false;
+  }
 }
 
 // ** main **
