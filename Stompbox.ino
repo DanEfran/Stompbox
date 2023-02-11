@@ -460,7 +460,7 @@ void handleStompButtonStateChange(int ii) {
     switch (button_config[ii].button_mode) {
 
       case FX_BYPASS:
-        sendFxBypassBool(1, fx, !(daw_state.fx_bypass[fx]));
+        sendFxBypassToggle(1, fx);
         break;
 
       case FXPARAM_CYCLE_3:
@@ -892,7 +892,9 @@ void sendRecordToggle() {
 }
 
 /// send an OSC message asking the DAW to enable or disable the specified fx plugin.
-void sendFxBypassBool(int track, int fx, bool value) {
+// (we send a toggle, not a requested value: our current knowledge might be a guess,
+// and this action itself will yield an OSC reply with an accurate indication of the true new state)
+void sendFxBypassToggle(int track, int fx) {
 
   // native Reaper OSC FX_BYPASS command doesn't work, or I'm not implementing it properly.
   // (Reaper's OSC default config file is sparsely and tersely documented, with almost no discussion of how Reaper actually behaves over OSC.) 
