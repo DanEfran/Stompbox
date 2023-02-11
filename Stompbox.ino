@@ -512,9 +512,37 @@ void scanControls() {
 //  byte oldSREG = SREG; // save interrupts status (on or off; likely on)
 //	noInterrupts(); // protect event buffer integrity
 
+  float value;
+  
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
     
     // @#@#@u handler
+    if (ii == 0) {
+      if (knob_state[ii].changed) {
+        
+        int delta = knob_state[ii].delta;
+
+        daw_state.screamer_drive = (daw_state.screamer_drive + 0.1 * delta);
+        if (daw_state.screamer_drive > 1.01) {
+          daw_state.screamer_drive = 1.0;
+        } else if (daw_state.screamer_drive < 0.0) {
+          daw_state.screamer_drive = 0.0;
+        }
+
+        value = daw_state.screamer_drive;
+        sendFxParamFloat(1, 3, 2, value);
+        /*
+        char report[99];
+        String sss = "float ";
+        sss = sss + value;
+        sss = sss + " representing stored ";
+        sss = sss + daw_state.screamer_drive;
+        sprintf(report, "sent %s", sss.c_str());
+        sendOSCString("/foobar/cycle10", report);
+        */
+
+      }
+    }
 
     consumeKnobChanges(ii);
 
