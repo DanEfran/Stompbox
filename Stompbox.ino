@@ -12,6 +12,11 @@ and mounted diagonally to allow semi-separate control of two channels),
 and a standard 1/4" expression pedal input.
 There is also a small reset button, hardwired to reset the arduino.
 
+-----
+Other implementation notes:
+- There was a linker warning about a variable 'u8 c' in C:\Users\Dan\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.6\cores\arduino\USBCore.cpp
+  being potentially undefined. A casual inspection suggested that this was a legitimate volatile variable, so I marked it 'volatile' to suppress the warning.
+-----
 
 Arduino Device: Adafruit ItsyBitsy 32u4
 Pinout:
