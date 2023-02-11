@@ -24,6 +24,7 @@ extern time_ms last_OSC_send_time;
 extern time_ms last_OSC_receive_time;
 extern const time_ms MINIMUM_TIME_BETWEEN_OSC_SENDS;
 
+void setupOSC();
 void listenForOSC();
 
 void sendOSCFloat(const char *address, float value);

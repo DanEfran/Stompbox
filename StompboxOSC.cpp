@@ -14,6 +14,16 @@ const time_ms MINIMUM_TIME_BETWEEN_OSC_SENDS = 10; // adjust to taste, but not l
 time_ms last_OSC_send_time;
 time_ms last_OSC_receive_time;
 
+/// open OSC-over-USB connection
+void setupOSC() {
+ 
+  SLIPSerial.begin(115200);
+
+  last_OSC_send_time = millis();
+  last_OSC_receive_time = last_OSC_send_time;
+
+}
+
 // Receive OSC messages...
 
 // receive and dispatch OSC bundles

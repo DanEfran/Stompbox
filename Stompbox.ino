@@ -645,30 +645,6 @@ void sendFxParamFloat(int track, int fx, int param, float value) {
 
 }
 
-// currently, we just wait a bit after each send, so we don't need tooSoon() anymore.
-// (there are several ways to deal with traffic throttling; we might change schemes again at some point)
-
-/*
-/// debounce to protect serial connection
-bool tooSoon() {
-  // if we send OSC messages too fast, we crash the serial connection (error 31 in the node.js bridge) or even crash/freeze the arduino (somehow???)
-  // so we throttle them to send no more often that about 5 or 10 ms. 
-  // (Adjust to taste for your risk tolerance; the absolute minimum without problems in a simple test seems to be about 4 or 5 ms.
-  //  Crashes are nearly immediate at 1 or 0. 5 might be safe enough but 10 seems safer. Perhaps larger message bundles will need more time?)
-  // this is mainly needed by analog (pedal) inputs: it's very unlikely we'll try to send other signals so fast. But feel free to throttle all message;
-  // note that this method is lossy and not suitable for all inputs. (If any: let's consider it temporary and improve it someday. @#@t)
-  const time_ms minimum_time_between_sends = 10;
-  static time_ms previous = millis();
-  time_ms current = millis();
-  time_ms elapsed = current - previous;
-  if (elapsed < minimum_time_between_sends) {
-    return;
-  }
-  previous = current;
-
-}
-*/
-
 /// send an OSC message controlling the "NA Wah" fx plugin (currently hardcoded) at position 2.
 void sendWah(float value) {
   
@@ -742,16 +718,6 @@ void setupPins() {
 
   // ...and there's a "reset light", a normal amber LED which echoes the built-in LED on pin 13
   pinMode(PIN_LED_BUILTIN, OUTPUT);
-
-}
-
-/// open OSC-over-USB connection
-void setupOSC() {
- 
-  SLIPSerial.begin(115200);
-
-  last_OSC_send_time = millis();
-  last_OSC_receive_time = last_OSC_send_time;
 
 }
 
