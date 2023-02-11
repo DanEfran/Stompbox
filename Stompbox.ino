@@ -453,7 +453,7 @@ void handleStompButtonStateChange(int ii) {
     previous = current;
 
     int fx = button_config[ii].fx_index;
-    int fxparam = FXPARAM_ANVIL_AMP_CHANNEL;
+    int fxparam = FXPARAM_ANVIL_AMP_CHANNEL; // @#@#@t
 
     float value;
 
@@ -785,6 +785,7 @@ void handleOSC_FxBypass(OSCMessage &msg) {
 void handleOSC_Fx4Fxparam2(OSCMessage &msg) {
 
   // float in message seems to be always 0?? ignore it
+  msg.empty();
 
   updateLampColors();
 
