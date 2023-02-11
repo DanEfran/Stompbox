@@ -453,8 +453,9 @@ void handleStompButtonStateChange(int ii) {
     previous = current;
 
     int fx = button_config[ii].fx_index;
-
     int fxparam = FXPARAM_ANVIL_AMP_CHANNEL;
+
+    float value;
 
     switch (button_config[ii].button_mode) {
 
@@ -464,9 +465,12 @@ void handleStompButtonStateChange(int ii) {
 
       case FXPARAM_CYCLE_3:
         daw_state.amp_channel = (daw_state.amp_channel + 1) % 3; // cycle 0, 1, 2, 0, 1, 2...
-        float value = daw_state.amp_channel / 2.0; // normalize to 0, 0.5, 1.0
+        value = daw_state.amp_channel / 2.0; // normalize to 0, 0.5, 1.0
         sendFxParamFloat(1, fx, fxparam, value);
         break;
+      
+      case IGNORED_BUTTON:
+        break;      
 
     }
 
