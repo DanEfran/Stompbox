@@ -526,8 +526,6 @@ void scanControls() {
 
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
     
-    // @#@#@u handler
-  
     if (knob_state[ii].changed) {
       
       int delta = knob_state[ii].delta;
@@ -539,7 +537,9 @@ void scanControls() {
         delta = 1;
       }
 
-      daw_state.fx_knob[ii].value = (daw_state.fx_knob[ii].value + 0.1 * delta);
+      const float KNOB_STEP_SIZE = 0.05; // adjust to taste
+
+      daw_state.fx_knob[ii].value = (daw_state.fx_knob[ii].value + KNOB_STEP_SIZE * delta);
       if (daw_state.fx_knob[ii].value > 1.01) {
         daw_state.fx_knob[ii].value = 1.0;
       } else if (daw_state.fx_knob[ii].value < 0.0) {
@@ -547,14 +547,6 @@ void scanControls() {
       }
 
       sendFxParamFloat(1, daw_state.fx_knob[ii].fx, daw_state.fx_knob[ii].fxparam, daw_state.fx_knob[ii].value);
-
-      /*
-      char report[99];
-      String sss = "float ";
-      sss = sss + daw_state.fx_knob[ii].value;
-      sprintf(report, "sent %s", sss.c_str());
-      sendOSCString("/foobar/cycle10", report);
-      */
 
     }
     
