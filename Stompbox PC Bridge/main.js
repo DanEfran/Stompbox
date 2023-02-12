@@ -85,9 +85,9 @@ server.on('message', (message, rinfo) => {
     sendSerial(message);
 
 	if (verbose >= 3) {
-		console.log(`>>> ${message.join(' ')} (${rinfo.address}:${rinfo.port})`);
+		console.log(`  -> ${message.join(' ')} (${rinfo.address}:${rinfo.port})`);
 	} else if (verbose >= 2) {
-		console.log(`>>> ${message.toString()}\n`); // @#@#@
+		console.log(`  -> ${message.toString()}\n`); // @#@#@
 	} else if (verbose >= 1) {
 		console.log('\t>');
 	}
@@ -118,9 +118,9 @@ function sendUDP(message) {
     );
 	
 	if (verbose >= 3) {
-		console.log(`<<< ${message.join(' ')} (${remoteAddr}:${remotePort})`);
+		console.log(`<-   ${message.join(' ')} (${remoteAddr}:${remotePort})`);
 	} else if (verbose >= 2) {
-		console.log(`<<< ${message.toString()}\n`); // @#@#@
+		console.log(`<-   ${message.toString()}\n`); // @#@#@
 	} else if (verbose >= 1) {
 		console.log('<');
 	}
