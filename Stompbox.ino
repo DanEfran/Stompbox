@@ -483,7 +483,7 @@ void scanControls() {
 
     const int threshold = 10;
 
-//    analogRead(PIN_PEDAL[ii]); // @#@? extra read to stabilize ADC?
+    //    analogRead(PIN_PEDAL[ii]); // @#@? extra read to stabilize ADC?
     int result = analogRead(PIN_PEDAL[ii]); 
   
     int was = pedal_state[ii].value;
@@ -513,7 +513,7 @@ void scanControls() {
 //	noInterrupts(); // protect event buffer integrity
 
   float value;
-  
+
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
     
     // @#@#@u handler
