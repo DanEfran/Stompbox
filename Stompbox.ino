@@ -90,6 +90,14 @@ typedef struct knob_state_s {
 // (I haven't checked whether they always arrive in the same order, but either way this is a fairly complex situation to handle correctly.)
 // maybe someday we can do that, but it's too much work for now. So we track Record or not, but ignore Pause etc.
 
+typedef struct daw_fx_knob_s {
+
+  int fx;
+  int fxparam;
+  float value;
+
+} daw_fx_knob_s;
+
 /// status of the DAW controls we interact with.
 // (imperfect knowledge: what we've been told, with guesses for what we haven't been told.)
 typedef struct daw_state_s {
@@ -97,7 +105,7 @@ typedef struct daw_state_s {
   bool recording; // our recording studio red light
   bool fx_bypass[9]; // we control bypass on fx 2-8. Array elements 0 and 1 are ignored.
   int amp_channel; // modes for plugin "The Anvil (Ignite Amps)" (param 2): saved here as 0, 1, 2 -- but over OSC, normalize to 0.0, 0.5, 1.0
-  float screamer_drive; // value for fx 3 "TS-999 SubScreamer" param 2
+  daw_fx_knob_s fx_knob[3]; // the fx parameters controlled by the knobs
 
 } daw_state_s;
 
@@ -270,7 +278,7 @@ void handleKnobChange(int ii) {
   int bb = digitalRead(PIN_ROTARY_B[ii]);
 
   // if code B is the same as A, knob is turning in one direction; if different, the other direction. actually pretty simple.
-  int direction = (aa == bb) ? -1 : 1;
+  int direction = (aa == bb) ? 1 : -1;
 
   // changes are interrupt-driven and thus can arrive faster than once per loop tick.
   // here we accumulate changes until loop consumes them.
@@ -335,22 +343,12 @@ void handleStompButtonStateChange(int ii) {
         
         // @#@d for testing
         
-        daw_state.screamer_drive = (daw_state.screamer_drive + 0.1);
-        if (daw_state.screamer_drive > 1.01) {
-          daw_state.screamer_drive = 0.0;
+        daw_state.fx_knob[0].value = (daw_state.fx_knob[0].value + 0.1);
+        if (daw_state.fx_knob[0].value > 1.01) {
+          daw_state.fx_knob[0].value = 0.0;
         }
 
-        value = daw_state.screamer_drive;
-        sendFxParamFloat(1, 3, 2, value);
-        
-        char report[99];
-        String sss = "float ";
-        sss = sss + value;
-        sss = sss + " representing stored ";
-        sss = sss + daw_state.screamer_drive;
-        sprintf(report, "sent %s", sss.c_str());
-        sendOSCString("/foobar/cycle10", report);
-
+        sendFxParamFloat(1, daw_state.fx_knob[0].fx, daw_state.fx_knob[0].fxparam, daw_state.fx_knob[0].value);
         break;
       
       case IGNORED_BUTTON:
@@ -389,6 +387,18 @@ void setupDawState() {
   for (int ii = 2; ii <= 8; ii++) {
     daw_state.fx_bypass[ii] = true;
   }
+
+  // we're guessing about these values initially, alas.
+  // @#@u can we check them somehow? 
+  for (int ii = 0; ii < NUM_KNOBS; ii++) {
+    daw_state.fx_knob[ii].value = 0.5;
+    
+    // for now, default to controlling Drive/Tone/Level on TS-999, fx #3 on track 1
+    daw_state.fx_knob[ii].fx = 3;
+    daw_state.fx_knob[ii].fxparam = 4 - ii; // stompbox knobs are numbered front to back, which is right to left on a 3-knob pedal simulating plugin
+    
+  }
+
 }
 
 /// configure buttons with default behavior modes and control targets
@@ -517,32 +527,37 @@ void scanControls() {
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
     
     // @#@#@u handler
-    if (ii == 0) {
-      if (knob_state[ii].changed) {
-        
-        int delta = knob_state[ii].delta;
+  
+    if (knob_state[ii].changed) {
+      
+      int delta = knob_state[ii].delta;
 
-        daw_state.screamer_drive = (daw_state.screamer_drive + 0.1 * delta);
-        if (daw_state.screamer_drive > 1.01) {
-          daw_state.screamer_drive = 1.0;
-        } else if (daw_state.screamer_drive < 0.0) {
-          daw_state.screamer_drive = 0.0;
-        }
-
-        value = daw_state.screamer_drive;
-        sendFxParamFloat(1, 3, 2, value);
-        /*
-        char report[99];
-        String sss = "float ";
-        sss = sss + value;
-        sss = sss + " representing stored ";
-        sss = sss + daw_state.screamer_drive;
-        sprintf(report, "sent %s", sss.c_str());
-        sendOSCString("/foobar/cycle10", report);
-        */
-
+      // disallow skips @#@?
+      if (delta < -1) {
+        delta = -1;
+      } else if (delta > 1) {
+        delta = 1;
       }
+
+      daw_state.fx_knob[ii].value = (daw_state.fx_knob[ii].value + 0.1 * delta);
+      if (daw_state.fx_knob[ii].value > 1.01) {
+        daw_state.fx_knob[ii].value = 1.0;
+      } else if (daw_state.fx_knob[ii].value < 0.0) {
+        daw_state.fx_knob[ii].value = 0.0;
+      }
+
+      sendFxParamFloat(1, daw_state.fx_knob[ii].fx, daw_state.fx_knob[ii].fxparam, daw_state.fx_knob[ii].value);
+
+      /*
+      char report[99];
+      String sss = "float ";
+      sss = sss + daw_state.fx_knob[ii].value;
+      sprintf(report, "sent %s", sss.c_str());
+      sendOSCString("/foobar/cycle10", report);
+      */
+
     }
+    
 
     consumeKnobChanges(ii);
 
@@ -564,7 +579,7 @@ void dispatchBundleContents(OSCBundle *bundleIN) {
   bundleIN->dispatch("/record", handleOSC_Record);
   bundleIN->dispatch("/track/1/fx/*/bypass", handleOSC_FxBypass);
   bundleIN->dispatch("/track/1/fx/4/fxparam/2/value", handleOSC_Fx4Fxparam2);
-  bundleIN->dispatch("/track/1/fx/3/fxparam/2/value", handleOSC_Fx3Fxparam2);
+  bundleIN->dispatch("/track/1/fx/3/fxparam/2/value", handleOSC_Fx3Fxparam2); // @#@#@t
 }
 
 /// act on an incoming OSC message
@@ -575,7 +590,7 @@ void dispatchMessage(OSCMessage *messageIN) {
   messageIN->dispatch("/record", handleOSC_Record);
   messageIN->dispatch("/track/1/fx/*/bypass", handleOSC_FxBypass);
   messageIN->dispatch("/track/1/fx/4/fxparam/2/value", handleOSC_Fx4Fxparam2);
-  messageIN->dispatch("/track/1/fx/3/fxparam/2/value", handleOSC_Fx3Fxparam2);
+  messageIN->dispatch("/track/1/fx/3/fxparam/2/value", handleOSC_Fx3Fxparam2); // @#@#@t
 }
 
 // Handle incoming OSC messages...
@@ -625,10 +640,10 @@ void handleOSC_Fx4Fxparam2(OSCMessage &msg) {
 
 }
 
-/// handle SubScreamer drive param
+/// handle SubScreamer drive param @#@#@t proof of concept
 void handleOSC_Fx3Fxparam2(OSCMessage &msg) {
 
-  daw_state.screamer_drive = msg.getFloat(0);
+  daw_state.fx_knob[0].value = msg.getFloat(0);
 
 }
 
