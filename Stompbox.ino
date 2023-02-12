@@ -570,8 +570,7 @@ void dispatchBundleContents(OSCBundle *bundleIN) {
   
   bundleIN->dispatch("/record", handleOSC_Record);
   bundleIN->dispatch("/track/1/fx/*/bypass", handleOSC_FxBypass);
-  bundleIN->dispatch("/track/1/fx/4/fxparam/2/value", handleOSC_Fx4Fxparam2);
-  bundleIN->dispatch("/track/1/fx/3/fxparam/2/value", handleOSC_Fx3Fxparam2); // @#@#@t
+  bundleIN->dispatch("/track/1/fx/*/fxparam/*/value", handleOSC_FxNFxparamM);
 }
 
 /// act on an incoming OSC message
@@ -581,8 +580,7 @@ void dispatchMessage(OSCMessage *messageIN) {
 
   messageIN->dispatch("/record", handleOSC_Record);
   messageIN->dispatch("/track/1/fx/*/bypass", handleOSC_FxBypass);
-  messageIN->dispatch("/track/1/fx/4/fxparam/2/value", handleOSC_Fx4Fxparam2);
-  messageIN->dispatch("/track/1/fx/3/fxparam/2/value", handleOSC_Fx3Fxparam2); // @#@#@t
+  messageIN->dispatch("/track/1/fx/*/fxparam/*/value", handleOSC_FxNFxparamM);
 }
 
 // Handle incoming OSC messages...
@@ -622,20 +620,32 @@ void handleOSC_FxBypass(OSCMessage &msg) {
 
 }
 
-/// handle Anvil amp channel param
-void handleOSC_Fx4Fxparam2(OSCMessage &msg) {
+/// handle fx param change update
+void handleOSC_FxNFxparamM(OSCMessage &msg) {
 
-  // float in message seems to be always 0?? ignore it
-  msg.empty();
+  // which plugin index? (1-based)
+  const int buffer_size = strlen("/track/1/fx/*/fxparam/*/value") + 1;
+  char buffer[buffer_size];
+  msg.getAddress(buffer);
+  int fx = buffer[12] - '0';        // e.g. "/track/1/fx/3/fxparam/5/value" -> 3
+  int fxparam = buffer[22] - '0';   // e.g. "/track/1/fx/3/fxparam/5/value" -> 5
 
-  updateLampColors();
+  if ((fx == 4) && (fxparam == 2)) {
+    // Anvil amp channel 0/0.5/1
+    // float in message seems to be always 0?? ignore it @#@#@?
+    msg.empty();
+    updateLampColors();
 
-}
+  } else {
+    for (int ii = 0; ii < NUM_KNOBS; ii++) {
+      // only apply updates to knobs that are assigned to that OSC address
+      if ((daw_state.fx_knob[ii].fx == fx) && (daw_state.fx_knob[ii].fxparam == fxparam)) {
+        // @#@t note: this can race with knob's own updates; can't fix that without a somewhat more complex scheme
+        daw_state.fx_knob[ii].value = msg.getFloat(0);
+      }
+    }
+  }
 
-/// handle SubScreamer drive param @#@#@t proof of concept
-void handleOSC_Fx3Fxparam2(OSCMessage &msg) {
-
-  daw_state.fx_knob[0].value = msg.getFloat(0);
 
 }
 
