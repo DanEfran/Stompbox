@@ -22,16 +22,16 @@ Arduino Device: Adafruit ItsyBitsy 32u4
 Pinout:
 0 N/C (reserved for USB serial)
 1 N/C (reserved for USB serial)
-2 Rotary 1 A
+2 Rotary 3 A
 3 Rotary 2 A
 4 Knob 1 select button
 5 Button 3
 6 Knob 2 select button
-7 Rotary 3 A
+7 Rotary 1 A
 8 Knob 3 select button
 9 Button 5
 10 Button 1
-11 Rotary 1 B
+11 Rotary 3 B
 12 Button 2
 13 N/C (LED_BUILTIN)
 14 (MISO) LED Data
@@ -42,7 +42,7 @@ A1 Joystick analog Y
 A2 External Pedal analog Z
 A3 Button 0 (record button)
 A4 Button 4
-A5 Rotary 3 B
+A5 Rotary 1 B
 RST (Reset button is connected to reset pin.)
 
 */
@@ -158,15 +158,15 @@ const byte PIN_BUTTON_2 = 12;
 const byte PIN_BUTTON_3 = 5;
 const byte PIN_BUTTON_4 = A4;
 const byte PIN_BUTTON_5 = 9;
-const byte ROTARY_1_A = 2; // 30-step rotary encoder knobs have A and B encoded outputs
-const byte ROTARY_1_B = 11;
+const byte ROTARY_3_A = 2; // 30-step rotary encoder knobs have A and B encoded outputs
+const byte ROTARY_3_B = 11;
 const byte ROTARY_2_A = 3; // pins 2, 3, and 7 are interrupt-capable; we use them for Rotary 1/2/3 Code A.
 const byte ROTARY_2_B = 16;
-const byte ROTARY_3_A = 7;
-const byte ROTARY_3_B = A5;
-const byte PIN_KNOB_SELECT_1 = 4; // rotary knobs can also push-to-select, a "button" input
+const byte ROTARY_1_A = 7; // knobs are numbered back-to-front, so they read left-to-right looking at the end of the Stompbox
+const byte ROTARY_1_B = A5;
+const byte PIN_KNOB_SELECT_3 = 4; // rotary knobs can also push-to-select, a "button" input
 const byte PIN_KNOB_SELECT_2 = 6;
-const byte PIN_KNOB_SELECT_3 = 8;
+const byte PIN_KNOB_SELECT_1 = 8;
 const byte PIN_PEDAL_X = A0; // integrated "pedal" joystick depressed left, i.e. SW (@#@?)
 const byte PIN_PEDAL_Y = A1; // integrated "pedal" joystick depressed right, i.e. SE (@#@?)
 const byte PIN_PEDAL_Z = A2; // external expression pedal input (note: pedal polarity may vary, software must be adjustable)
@@ -395,7 +395,7 @@ void setupDawState() {
     
     // for now, default to controlling Drive/Tone/Level on TS-999, fx #3 on track 1
     daw_state.fx_knob[ii].fx = 3;
-    daw_state.fx_knob[ii].fxparam = 4 - ii; // stompbox knobs are numbered front to back, which is right to left on a 3-knob pedal simulating plugin
+    daw_state.fx_knob[ii].fxparam = 2 + ii;
     
   }
 
