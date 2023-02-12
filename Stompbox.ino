@@ -118,7 +118,7 @@ typedef enum button_mode_e {
   IGNORED_BUTTON,               // does nothing
   FX_BYPASS,                    // sends bypass on/off messages
   FXPARAM_CYCLE_3,              // sends fxparam value cycle among 0, 0.5, 1
-  FXPARAM_CYCLE_10              // sends fxparam value cycle among .0, .1, .2, ..., .9, 1.0, .0, .1, ...
+//  FXPARAM_CYCLE_10              // sends fxparam value cycle among .0, .1, .2, ..., .9, 1.0, .0, .1, ...
 
 } button_mode_e;
 
@@ -338,7 +338,7 @@ void handleStompButtonStateChange(int ii) {
         value = daw_state.amp_channel / 2.0; // normalize to 0, 0.5, 1.0
         sendFxParamFloat(1, fx, fxparam, value);
         break;
-      
+      /*
       case FXPARAM_CYCLE_10:
         
         // @#@d for testing
@@ -350,7 +350,7 @@ void handleStompButtonStateChange(int ii) {
 
         sendFxParamFloat(1, daw_state.fx_knob[0].fx, daw_state.fx_knob[0].fxparam, daw_state.fx_knob[0].value);
         break;
-      
+      */
       case IGNORED_BUTTON:
         break;      
 
@@ -421,11 +421,12 @@ void setupButtons() {
   button_config[9].button_mode = IGNORED_BUTTON;
   // .fx_index and .fx_param irrelevant for this mode
 
+  /*
   // @#@d exception: for debugging, button 1 is a cycle 10 on a particualr soon-to-be knob
   button_config[1].button_mode = FXPARAM_CYCLE_10;
   button_config[1].fx_index = 3;
   button_config[1].fx_param = 2;
-
+  */
 }
 
 /// set up data structures for control inputs
