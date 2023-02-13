@@ -201,6 +201,9 @@ const byte PIN_ROTARY_B[NUM_KNOBS] = {
 const int FXPARAM_ANVIL_AMP_INDEX = 5;
 const int FXPARAM_ANVIL_AMP_CHANNEL = 2;
 
+const int FXPARAM_OVERDRIVE_INDEX = 4;
+const int FXPARAM_OVERDRIVE_DRIVE = 2;
+
 // ** globals **
 
 // current (after scan_controls) state of each button (including select press on knobs and joystick, see PIN_BUTTON for the array order)
@@ -376,9 +379,9 @@ void setupDawState() {
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
     daw_state.fx_knob[ii].value = 0.5;
     
-    // for now, default to controlling Drive/Tone/Level on TS-999, fx #3 on track 1
-    daw_state.fx_knob[ii].fx = 3;
-    daw_state.fx_knob[ii].fxparam = 2 + ii;
+    // for now, default to controlling Drive/Tone/Level on TS-999, fx #4 on track 1
+    daw_state.fx_knob[ii].fx = FXPARAM_OVERDRIVE_INDEX;
+    daw_state.fx_knob[ii].fxparam = FXPARAM_OVERDRIVE_DRIVE + ii;
     
   }
 
