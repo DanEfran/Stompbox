@@ -406,12 +406,6 @@ void setupButtons() {
   button_config[9].button_mode = IGNORED_BUTTON;
   // .fx_index and .fx_param irrelevant for this mode
 
-  /*
-  // @#@d exception: for debugging, button 1 is a cycle 10 on a particualr soon-to-be knob
-  button_config[1].button_mode = FXPARAM_CYCLE_10;
-  button_config[1].fx_index = 3;
-  button_config[1].fx_param = 2;
-  */
 }
 
 /// set up data structures for control inputs
@@ -617,9 +611,10 @@ void handleOSC_FxNFxparamM(OSCMessage &msg) {
   int fxparam = buffer[22] - '0';   // e.g. "/track/1/fx/3/fxparam/5/value" -> 5
 
   if ((fx == 4) && (fxparam == 2)) {
+    
     // Anvil amp channel 0/0.5/1
-    // float in message seems to be always 0?? ignore it @#@#@?
-    msg.empty();
+    daw_state.amp_channel = (int)(msg.getFloat(0) * 2.0);
+    
     updateLampColors();
 
   } else {
