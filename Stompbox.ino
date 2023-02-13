@@ -313,7 +313,7 @@ void handleStompButtonStateChange(int ii) {
   if (button_state[ii] == RELEASING) {
       
     // debounce each button
-    const time_ms minimum_time_between_stomps = 100;
+    const time_ms minimum_time_between_stomps = 250;
     time_ms now = millis();
     if (now < button_config[ii].time_of_last_release + minimum_time_between_stomps) {
       return;
