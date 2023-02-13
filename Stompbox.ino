@@ -168,8 +168,8 @@ const byte ROTARY_1_B = A5;
 const byte PIN_KNOB_SELECT_3 = 4; // rotary knobs can also push-to-select, a "button" input
 const byte PIN_KNOB_SELECT_2 = 6;
 const byte PIN_KNOB_SELECT_1 = 8;
-const byte PIN_PEDAL_X = A0; // integrated "pedal" joystick depressed left, i.e. SW (@#@?)
-const byte PIN_PEDAL_Y = A1; // integrated "pedal" joystick depressed right, i.e. SE (@#@?)
+const byte PIN_PEDAL_X = A0; // integrated "pedal" joystick depressed left, i.e. SW (@#@? these 2 might be backwards, but neither is working now so who knows?)
+const byte PIN_PEDAL_Y = A1; // integrated "pedal" joystick depressed right, i.e. SE
 const byte PIN_PEDAL_Z = A2; // external expression pedal input (note: pedal polarity may vary, software must be adjustable)
 const byte PIN_PEDAL_SELECT = 15; // integrated "pedal" joystick has push-to-select button input. (may be ergonomically prone to accidental presses)
 
@@ -371,7 +371,7 @@ void setupDawState() {
   }
 
   // we're guessing about these values initially, alas.
-  // @#@u can we check them somehow? 
+  // @#@u can we check them somehow? is there an osc command that can request an fxparam value without setting it?
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
     daw_state.fx_knob[ii].value = 0.5;
     
@@ -471,7 +471,7 @@ void scanControls() {
 
     const int threshold = 10;
 
-    //    analogRead(PIN_PEDAL[ii]); // @#@? extra read to stabilize ADC?
+    //    analogRead(PIN_PEDAL[ii]); // @#@? some sources recommend an extra read to stabilize ADC. We could test this.
     int result = analogRead(PIN_PEDAL[ii]); 
   
     int was = pedal_state[ii].value;
@@ -508,7 +508,10 @@ void scanControls() {
       
       int delta = knob_state[ii].delta;
 
-      // disallow skips @#@?
+      // disallow skips
+      // @#@? this is a matter of taste. If the user spins the knob fast, do we try to keep up?
+      // or just say "ok, you turned it" but ignore the excess distance and condense it to one nominal tick?
+      // Try both, pick whichever feels smoother subjectively. It doesn't matter much.
       if (delta < -1) {
         delta = -1;
       } else if (delta > 1) {
@@ -650,7 +653,14 @@ void updateLampColors() {
 
     if (ii == 5) {
 
-      // I'm using lamp 5 (and button 5) for amp channel cycle (for now @#@t)
+      // I'm using lamp 5 (and button 5) for amp channel cycle
+      
+      // @#@t this hard-coded special case is not worth generalizing until we have a second example.
+      // one button that switches between clean/rhythm/lead on the amp makes sense.
+      // are there other fx plugins that have short cycles like that? That we care about?
+      // If we replace the amp, does it have a different control for channel selection, or none?
+      // There are no answers to these question yet, so this is fine just hard-coded to the specific DAW setup for now. 
+
       if (daw_state.fx_bypass[button_config[ii].fx_index]) {
         leds[ii] = amp_channel_hue[daw_state.amp_channel].scale8(V_DIM);
       } else {
@@ -659,8 +669,8 @@ void updateLampColors() {
       
     } else {
 
-      // the rest of the lamps are fx bypass toggles (for now @#@t)
-
+      // the rest of the lamps are fx bypass toggles (the default, to emulate a row of basic stomp-on/stomp-off guitar pedals)
+      // which fx each lamp represents is set in the corresponding button's configuration.    
       if (daw_state.fx_bypass[button_config[ii].fx_index]) {
         leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_DIM);
       } else {
