@@ -198,6 +198,7 @@ const byte PIN_ROTARY_B[NUM_KNOBS] = {
 };
 
 // fx parameter number for a particular control we're interested in, 'The Anvil' amp's channel select
+const int FXPARAM_ANVIL_AMP_INDEX = 5;
 const int FXPARAM_ANVIL_AMP_CHANNEL = 2;
 
 // ** globals **
@@ -397,7 +398,7 @@ void setupButtons() {
 
   // exception: amp channel button (button 5)
   button_config[5].button_mode = FXPARAM_CYCLE_3;
-  button_config[5].fx_index = 4; // 'The Anvil' amp: current position in fx chain
+  button_config[5].fx_index = FXPARAM_ANVIL_AMP_INDEX; // 'The Anvil' amp: current position in fx chain
   button_config[5].fx_param = FXPARAM_ANVIL_AMP_CHANNEL; // amp: channel select control
 
   // exception: joystick select button is ignored (probably too easily kicked)
@@ -611,7 +612,7 @@ void handleOSC_FxNFxparamM(OSCMessage &msg) {
   int fx = buffer[12] - '0';        // e.g. "/track/1/fx/3/fxparam/5/value" -> 3
   int fxparam = buffer[22] - '0';   // e.g. "/track/1/fx/3/fxparam/5/value" -> 5
 
-  if ((fx == 4) && (fxparam == 2)) {
+  if ((fx == FXPARAM_ANVIL_AMP_INDEX) && (fxparam == FXPARAM_ANVIL_AMP_CHANNEL)) {
 
     // Anvil amp channel 0/0.5/1
     daw_state.amp_channel = (int)(msg.getFloat(0) * 2.0);
