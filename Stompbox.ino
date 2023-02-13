@@ -619,8 +619,14 @@ void handleOSC_FxNFxparamM(OSCMessage &msg) {
     for (int ii = 0; ii < NUM_KNOBS; ii++) {
       // only apply updates to knobs that are assigned to that OSC address
       if ((daw_state.fx_knob[ii].fx == fx) && (daw_state.fx_knob[ii].fxparam == fxparam)) {
-        // @#@t note: this can race with knob's own updates; can't fix that without a somewhat more complex scheme
-        daw_state.fx_knob[ii].value = msg.getFloat(0);
+        // note: we'd like to confirm the feedback, but this feedback is relatively slow compared to turning a knob, 
+        // so the feedback message updates can race with the knob's own updates, causing ugly glitches; 
+        // can't really fix that without a somewhat more complex scheme that is tolerant of lagging updates.
+        //daw_state.fx_knob[ii].value = msg.getFloat(0);
+        
+        // Or, we can ignore the feedback and just impose our version of the truth. This prevents most dial jumping glitches,
+        // and we can just trust the feedback will catch up and eventually agree. Fxparam messages do seem to work, so why not.
+
       }
     }
   }
