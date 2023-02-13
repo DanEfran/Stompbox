@@ -322,35 +322,20 @@ void handleStompButtonStateChange(int ii) {
     }
     previous = current;
 
-    int fx = button_config[ii].fx_index;
-    int fxparam = FXPARAM_ANVIL_AMP_CHANNEL; // @#@#@t
-
     float value;
 
     switch (button_config[ii].button_mode) {
 
       case FX_BYPASS:
-        sendFxBypassToggle(1, fx);
+        sendFxBypassToggle(1, button_config[ii].fx_index);
         break;
 
       case FXPARAM_CYCLE_3:
         daw_state.amp_channel = (daw_state.amp_channel + 1) % 3; // cycle 0, 1, 2, 0, 1, 2...
         value = daw_state.amp_channel / 2.0; // normalize to 0, 0.5, 1.0
-        sendFxParamFloat(1, fx, fxparam, value);
+        sendFxParamFloat(1, button_config[ii].fx_index, button_config[ii].fx_param, value);
         break;
-      /*
-      case FXPARAM_CYCLE_10:
-        
-        // @#@d for testing
-        
-        daw_state.fx_knob[0].value = (daw_state.fx_knob[0].value + 0.1);
-        if (daw_state.fx_knob[0].value > 1.01) {
-          daw_state.fx_knob[0].value = 0.0;
-        }
-
-        sendFxParamFloat(1, daw_state.fx_knob[0].fx, daw_state.fx_knob[0].fxparam, daw_state.fx_knob[0].value);
-        break;
-      */
+      
       case IGNORED_BUTTON:
         break;      
 
