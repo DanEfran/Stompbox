@@ -128,6 +128,7 @@ typedef struct button_configuration_s {
   int fx_index; // fx index in DAW track 1 fx chain: we use indices 2 through 8
   int fx_param; // parameter index in that fx plugin's controls
   button_mode_e button_mode; // how the button behaves
+  time_ms time_of_last_release; // for debouncing
 
 } button_configuration_s;
 
@@ -310,17 +311,13 @@ void handleStompButtonStateChange(int ii) {
 
   if (button_state[ii] == RELEASING) {
       
-    // debounce.
-    // @#@t there are several places we could do this; this may not be the best.
-    // (per button? per direction of change? various ways we could implement debouncing....)
-    const time_ms minimum_time_between_stomps = 500;
-    static time_ms previous = millis();
-    time_ms current = millis();
-    time_ms elapsed = current - previous;
-    if (elapsed < minimum_time_between_stomps) {
+    // debounce each button
+    const time_ms minimum_time_between_stomps = 100;
+    time_ms now = millis();
+    if (now < button_config[ii].time_of_last_release + minimum_time_between_stomps) {
       return;
     }
-    previous = current;
+    button_config[ii].time_of_last_release = now;
 
     float value;
 
@@ -394,6 +391,7 @@ void setupButtons() {
   for (int ii = 1; ii <= 8; ii++) {
     button_config[ii].button_mode = FX_BYPASS;
     button_config[ii].fx_index = (ii > 5) ? ii : ii + 1; // 2, 3, 4, 5, (6), 6, 7, 8
+    button_config[ii].time_of_last_release = millis();
     // .fx_param irrelevant for this mode
   }
 
@@ -611,7 +609,7 @@ void handleOSC_FxNFxparamM(OSCMessage &msg) {
   int fxparam = buffer[22] - '0';   // e.g. "/track/1/fx/3/fxparam/5/value" -> 5
 
   if ((fx == 4) && (fxparam == 2)) {
-    
+
     // Anvil amp channel 0/0.5/1
     daw_state.amp_channel = (int)(msg.getFloat(0) * 2.0);
     
