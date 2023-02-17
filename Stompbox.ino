@@ -410,19 +410,139 @@ void setupButtons() {
 
 }
 
+/// a knob has been turned while holding down exactly one button
+void handleMetaKnobChange(int knob, int button, int delta) {
+
+  const int KNOB_META_INDEX = 0;
+  const int KNOB_META_PARAM = 1;
+  const int KNOB_META_MODE = 2;
+
+  int new_value;
+  String msg = "";
+
+//  msg = msg + fx; // fx = 1 thru 8 only
+//  sendOSCString("/foobar/knob", msg.c_str());
+
+  // note: we currently allow delta to be anything here, but it's probably best if it's only +1 or -1.
+  // at present, the caller guarantees that, but if we change the caller, maybe we should do it here.
+
+  switch (button) {
+    case 0: 
+      // record button
+      // no customization options yet, so knob doesn't do anything
+      //  (in the future, it could cycle through behavior modes,
+      //   such as whether to stop or punch-out when recording ends, etc.)
+      break;
+      
+    case 1: case 2: case 3: case 4: case 5:
+      // stomp button: meta knobs reassign it
+      switch (knob) {
+        case KNOB_META_INDEX:
+          // first knob sets button's target fx
+          new_value = button_config[button].fx_index + delta;
+          // constrain to fx we can control
+          if (new_value < 1) {
+            new_value = 1;
+          } else if (new_value > 8) {
+            new_value = 8;
+          }
+          button_config[button].fx_index = new_value;
+          msg += " Button ";
+          msg += button;
+          msg += ": fx ";
+          msg += new_value;
+          sendOSCString("/foobar/knob_meta", msg.c_str());
+          break;
+
+        case KNOB_META_PARAM:
+          // second knob sets button's target fx parameter
+          new_value = button_config[5].fx_param + delta;
+          if (new_value < 1) {
+            new_value = 1;
+          } else if (new_value > 255) {
+            // Adjust to taste: I have no idea how many fxparams an fx can actually have, or realistically would have
+            new_value = 255;
+          }
+          button_config[button].fx_param = new_value;
+          msg += " Button ";
+          msg += button;
+          msg += ": fxparam ";
+          msg += button_config[button].fx_param;
+          sendOSCString("/foobar/knob_meta", msg.c_str());
+          break;
+
+        case KNOB_META_MODE:
+          // third knob cycles button behavior mode
+          switch (button_config[button].button_mode) {
+            case FX_BYPASS:
+              button_config[button].button_mode = FXPARAM_CYCLE_3;
+              msg += " Button ";
+              msg += button;
+              msg += ": mode ";
+              msg += "CYCLE_3";
+              sendOSCString("/foobar/knob_meta", msg.c_str());
+              break;
+
+            case FXPARAM_CYCLE_3:
+              button_config[button].button_mode = FX_BYPASS;
+              msg += " Button ";
+              msg += button;
+              msg += ": mode ";
+              msg += "BYPASS";
+              sendOSCString("/foobar/knob_meta", msg.c_str());
+              break;
+
+            default:
+              // IGNORED_BUTTON is for debugging; it does not participate in this cycle
+              break;
+          }
+          
+          break;
+      }
+      break;
+
+    case 6: case 7: case 8:
+      // knob buttons: meta knobs reassign the knobs (not the knob buttons! 
+      //  we can't select both knob and button; knob is more important)
+      switch (knob) {
+        case KNOB_META_INDEX:
+          // first knob sets knob's target fx
+          // @#@u
+          break;
+
+        case KNOB_META_PARAM:
+          // second knob sets knob's target fx parameter
+          // @#@u
+          break;
+
+        case KNOB_META_MODE:
+          // third knob sets knob's scale per tick? knob mode?
+          // @#@u
+          break;
+      }
+      break;
+    
+    case 9:
+      // joystick select button
+      // not used, so not configurable
+      break;
+      
+  }
+}
+
 /// a knob has been turned
-void handleKnobChange(int ii, int delta) {
+void handleKnobChange(int knob, int delta) {
 
   const float KNOB_STEP_SIZE = 0.05; // adjust to taste
 
-  daw_state.fx_knob[ii].value = (daw_state.fx_knob[ii].value + KNOB_STEP_SIZE * delta);
-  if (daw_state.fx_knob[ii].value > 1.01) {
-    daw_state.fx_knob[ii].value = 1.0;
-  } else if (daw_state.fx_knob[ii].value < 0.0) {
-    daw_state.fx_knob[ii].value = 0.0;
+  daw_state.fx_knob[knob].value = (daw_state.fx_knob[knob].value + KNOB_STEP_SIZE * delta);
+  if (daw_state.fx_knob[knob].value > 1.01) {
+    daw_state.fx_knob[knob].value = 1.0;
+  } else if (daw_state.fx_knob[knob].value < 0.0) {
+    daw_state.fx_knob[knob].value = 0.0;
   }
 
-  sendFxParamFloat(1, daw_state.fx_knob[ii].fx, daw_state.fx_knob[ii].fxparam, daw_state.fx_knob[ii].value);
+  sendFxParamFloat(1, daw_state.fx_knob[knob].fx, daw_state.fx_knob[knob].fxparam, daw_state.fx_knob[knob].value);
 
 }
 
@@ -538,7 +658,23 @@ void scanControls() {
         delta = 1;
       }
 
-      handleKnobChange(ii, delta);
+      // if exactly one button is being held down when we turn the knob, treat it as a meta knob
+      // (reconfiguring the corresponding control surface control rather than controlling a DAW fx parameter)
+
+      int pressed_button = -1;
+      int how_many_pressed_buttons = 0;
+      for (int jj = 0; jj < NUM_BUTTONS; jj++) {
+        if (button_state[jj] == PRESSED) {
+          pressed_button = jj;
+          how_many_pressed_buttons += 1;
+        }
+      }
+
+      if (how_many_pressed_buttons == 1) {
+        handleMetaKnobChange(ii, pressed_button, delta);
+      } else {
+        handleKnobChange(ii, delta);
+      }
 
     }
     
