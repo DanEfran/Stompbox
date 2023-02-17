@@ -410,6 +410,22 @@ void setupButtons() {
 
 }
 
+/// a knob has been turned
+void handleKnobChange(int ii, int delta) {
+
+  const float KNOB_STEP_SIZE = 0.05; // adjust to taste
+
+  daw_state.fx_knob[ii].value = (daw_state.fx_knob[ii].value + KNOB_STEP_SIZE * delta);
+  if (daw_state.fx_knob[ii].value > 1.01) {
+    daw_state.fx_knob[ii].value = 1.0;
+  } else if (daw_state.fx_knob[ii].value < 0.0) {
+    daw_state.fx_knob[ii].value = 0.0;
+  }
+
+  sendFxParamFloat(1, daw_state.fx_knob[ii].fx, daw_state.fx_knob[ii].fxparam, daw_state.fx_knob[ii].value);
+
+}
+
 /// set up data structures for control inputs
 void setupControls() {
 
@@ -522,16 +538,7 @@ void scanControls() {
         delta = 1;
       }
 
-      const float KNOB_STEP_SIZE = 0.05; // adjust to taste
-
-      daw_state.fx_knob[ii].value = (daw_state.fx_knob[ii].value + KNOB_STEP_SIZE * delta);
-      if (daw_state.fx_knob[ii].value > 1.01) {
-        daw_state.fx_knob[ii].value = 1.0;
-      } else if (daw_state.fx_knob[ii].value < 0.0) {
-        daw_state.fx_knob[ii].value = 0.0;
-      }
-
-      sendFxParamFloat(1, daw_state.fx_knob[ii].fx, daw_state.fx_knob[ii].fxparam, daw_state.fx_knob[ii].value);
+      handleKnobChange(ii, delta);
 
     }
     
