@@ -456,7 +456,7 @@ void handleMetaKnobChange(int knob, int button, int delta) {
 
         case KNOB_META_PARAM:
           // second knob sets button's target fx parameter
-          new_value = button_config[5].fx_param + delta;
+          new_value = button_config[button].fx_param + delta;
           if (new_value < 1) {
             new_value = 1;
           } else if (new_value > 255) {
