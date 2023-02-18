@@ -92,11 +92,17 @@ typedef struct knob_state_s {
 
 typedef struct daw_fx_knob_s {
 
-  int fx;
-  int fxparam;
   float value;
 
 } daw_fx_knob_s;
+
+typedef struct knob_configuration_s {
+
+  int fx;
+  int fxparam;
+  float step_size;
+
+} knob_configuration_s;
 
 /// status of the DAW controls we interact with.
 // (imperfect knowledge: what we've been told, with guesses for what we haven't been told.)
@@ -104,7 +110,8 @@ typedef struct daw_state_s {
 
   bool recording; // our recording studio red light
   bool fx_bypass[9]; // we control bypass on fx 2-8. Array elements 0 and 1 are ignored.
-  int amp_channel; // modes for plugin "The Anvil (Ignite Amps)" (param 2): saved here as 0, 1, 2 -- but over OSC, normalize to 0.0, 0.5, 1.0
+  //int amp_channel; // modes for plugin "The Anvil (Ignite Amps)" (param 2): saved here as 0, 1, 2 -- but over OSC, normalize to 0.0, 0.5, 1.0
+  float fx_value[9]; // the fx parameters controlled by the buttons (only relevant for buttons 1-8, and only for buttons not in BYPASS mode)
   daw_fx_knob_s fx_knob[3]; // the fx parameters controlled by the knobs
 
 } daw_state_s;
@@ -221,6 +228,9 @@ daw_state_s daw_state;
 // behavior modes and control targets of the buttons
 button_configuration_s button_config[NUM_BUTTONS];
 
+// behavior modes and control targets of the knobs
+knob_configuration_s knob_config[NUM_KNOBS];
+
 // ** visual display (LEDs) **
 
 
@@ -324,6 +334,7 @@ void handleStompButtonStateChange(int ii) {
     button_config[ii].time_of_last_release = now;
 
     float value;
+    int value_int;
 
     switch (button_config[ii].button_mode) {
 
@@ -332,8 +343,11 @@ void handleStompButtonStateChange(int ii) {
         break;
 
       case FXPARAM_CYCLE_3:
-        daw_state.amp_channel = (daw_state.amp_channel + 1) % 3; // cycle 0, 1, 2, 0, 1, 2...
-        value = daw_state.amp_channel / 2.0; // normalize to 0, 0.5, 1.0
+        value = daw_state.fx_value[ii];
+        value_int = (int)(value * 2.0); // 0.0/0.5/1.0 -> 0/1/2
+        value_int = (value_int + 1) % 3; // cycle 0, 1, 2, 0, 1, 2...
+        value = value_int / 2.0; // normalize to 0, 0.5, 1.0
+        daw_state.fx_value[ii] = value;
         sendFxParamFloat(1, button_config[ii].fx_index, button_config[ii].fx_param, value);
         break;
       
@@ -372,17 +386,6 @@ void setupDawState() {
   // we're guessing about these initially
   for (int ii = 2; ii <= 8; ii++) {
     daw_state.fx_bypass[ii] = true;
-  }
-
-  // we're guessing about these values initially, alas.
-  // @#@u can we check them somehow? is there an osc command that can request an fxparam value without setting it?
-  for (int ii = 0; ii < NUM_KNOBS; ii++) {
-    daw_state.fx_knob[ii].value = 0.5;
-    
-    // for now, default to controlling Drive/Tone/Level on TS-999, fx #4 on track 1
-    daw_state.fx_knob[ii].fx = FXPARAM_OVERDRIVE_INDEX;
-    daw_state.fx_knob[ii].fxparam = FXPARAM_OVERDRIVE_DRIVE + ii;
-    
   }
 
 }
@@ -543,7 +546,7 @@ void handleKnobChange(int knob, int delta) {
     daw_state.fx_knob[knob].value = 0.0;
   }
 
-  sendFxParamFloat(1, daw_state.fx_knob[knob].fx, daw_state.fx_knob[knob].fxparam, daw_state.fx_knob[knob].value);
+  sendFxParamFloat(1, knob_config[knob].fx, knob_config[knob].fxparam, daw_state.fx_knob[knob].value);
 
 }
 
@@ -562,6 +565,14 @@ void setupControls() {
     knob_state[ii].value = 0; 
     knob_state[ii].delta = 0;
     knob_state[ii].changed = false;
+
+    // we're guessing about these values initially, alas.
+    // @#@u can we check them somehow? is there an osc command that can request an fxparam value without setting it?
+    daw_state.fx_knob[ii].value = 0.5;
+    
+    // for now, default to controlling Drive/Tone/Level on TS-999, fx #4 on track 1
+    knob_config[ii].fx = FXPARAM_OVERDRIVE_INDEX;
+    knob_config[ii].fxparam = FXPARAM_OVERDRIVE_DRIVE + ii;
   }
 
   attachInterrupt( digitalPinToInterrupt(PIN_ROTARY_A[0]),	handleRotaryInterrupt0, CHANGE);
@@ -640,8 +651,6 @@ void scanControls() {
 	
 //  byte oldSREG = SREG; // save interrupts status (on or off; likely on)
 //	noInterrupts(); // protect event buffer integrity
-
-  float value;
 
   for (int ii = 0; ii < NUM_KNOBS; ii++) {
     
@@ -759,28 +768,27 @@ void handleOSC_FxNFxparamM(OSCMessage &msg) {
   int fx = buffer[12] - '0';        // e.g. "/track/1/fx/3/fxparam/5/value" -> 3
   int fxparam = buffer[22] - '0';   // e.g. "/track/1/fx/3/fxparam/5/value" -> 5
 
-  if ((fx == FXPARAM_ANVIL_AMP_INDEX) && (fxparam == FXPARAM_ANVIL_AMP_CHANNEL)) {
-
-    // Anvil amp channel 0/0.5/1
-    daw_state.amp_channel = (int)(msg.getFloat(0) * 2.0);
-    
-    updateLampColors();
-
-  } else {
-    for (int ii = 0; ii < NUM_KNOBS; ii++) {
-      // only apply updates to knobs that are assigned to that OSC address
-      if ((daw_state.fx_knob[ii].fx == fx) && (daw_state.fx_knob[ii].fxparam == fxparam)) {
-        // note: we'd like to confirm the feedback, but this feedback is relatively slow compared to turning a knob, 
-        // so the feedback message updates can race with the knob's own updates, causing ugly glitches; 
-        // can't really fix that without a somewhat more complex scheme that is tolerant of lagging updates.
-        //daw_state.fx_knob[ii].value = msg.getFloat(0);
-        
-        // Or, we can ignore the feedback and just impose our version of the truth. This prevents most dial jumping glitches,
-        // and we can just trust the feedback will catch up and eventually agree. Fxparam messages do seem to work, so why not.
-
-      }
+  for (int ii = 1; ii <= 8; ii++) {
+    if ( (button_config[ii].fx_index == fx) && (button_config[ii].fx_param == fxparam) ) {
+      daw_state.fx_value[ii] = msg.getFloat(0);
+      updateLampColors();
     }
   }
+
+  /*
+  for (int ii = 0; ii < NUM_KNOBS; ii++) {
+    // only apply updates to knobs that are assigned to that OSC address
+    if ((knob_config[ii].fx == fx) && (knob_config[ii].fxparam == fxparam)) {
+      // note: we'd like to confirm the feedback, but this feedback is relatively slow compared to turning a knob, 
+      // so the feedback message updates can race with the knob's own updates, causing ugly glitches; 
+      // can't really fix that without a somewhat more complex scheme that is tolerant of lagging updates.
+      //knob_config[ii].value = msg.getFloat(0);
+      
+      // Or, we can ignore the feedback and just impose our version of the truth. This prevents most dial jumping glitches,
+      // and we can just trust the feedback will catch up and eventually agree. Fxparam messages do seem to work, so why not.
+    }
+  }
+  */
 
 
 }
@@ -799,26 +807,21 @@ void updateLampColors() {
   // set lamp colors
   for (int ii = 1; ii <= 5; ii++) {
 
-    if (ii == 5) {
+    if (button_config[ii].button_mode == FXPARAM_CYCLE_3) {
 
-      // I'm using lamp 5 (and button 5) for amp channel cycle
-      
-      // @#@t this hard-coded special case is not worth generalizing until we have a second example.
-      // one button that switches between clean/rhythm/lead on the amp makes sense.
-      // are there other fx plugins that have short cycles like that? That we care about?
-      // If we replace the amp, does it have a different control for channel selection, or none?
-      // There are no answers to these question yet, so this is fine just hard-coded to the specific DAW setup for now. 
+      // if a button is configured to cycle between 3 options, corresponding lamp shows one of 3 colors.
+      int option = (int)(daw_state.fx_value[ii] * 2);
 
       if (daw_state.fx_bypass[button_config[ii].fx_index]) {
-        leds[ii] = amp_channel_hue[daw_state.amp_channel].scale8(V_DIM);
+        leds[ii] = amp_channel_hue[option].scale8(V_DIM);
       } else {
-        leds[ii] = amp_channel_hue[daw_state.amp_channel];
+        leds[ii] = amp_channel_hue[option];
       }
       
     } else {
 
-      // the rest of the lamps are fx bypass toggles (the default, to emulate a row of basic stomp-on/stomp-off guitar pedals)
-      // which fx each lamp represents is set in the corresponding button's configuration.    
+      // the default button mode is fx bypass toggle (to emulate a row of basic stomp-on/stomp-off guitar pedals)
+      // lamps reflect fx on/off status. which fx each lamp represents is set in the corresponding button's configuration.    
       if (daw_state.fx_bypass[button_config[ii].fx_index]) {
         leds[ii] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_DIM);
       } else {
