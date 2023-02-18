@@ -473,28 +473,29 @@ void handleMetaKnobChange(int knob, int button, int delta) {
 
         case KNOB_META_MODE:
           // third knob cycles button behavior mode
-          switch (button_config[button].button_mode) {
-            case FX_BYPASS:
+          if (delta < 0) {
+          //switch (button_config[button].button_mode) {
+          //  case FX_BYPASS:
               button_config[button].button_mode = FXPARAM_CYCLE_3;
               msg += " Button ";
               msg += button;
               msg += ": mode ";
               msg += "CYCLE_3";
               sendOSCString("/foobar/knob_meta", msg.c_str());
-              break;
-
-            case FXPARAM_CYCLE_3:
+          //    break;
+          } else {
+          //  case FXPARAM_CYCLE_3:
               button_config[button].button_mode = FX_BYPASS;
               msg += " Button ";
               msg += button;
               msg += ": mode ";
               msg += "BYPASS";
               sendOSCString("/foobar/knob_meta", msg.c_str());
-              break;
+          //    break;
 
-            default:
+          //  default:
               // IGNORED_BUTTON is for debugging; it does not participate in this cycle
-              break;
+          //    break;
           }
           
           break;
