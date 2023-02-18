@@ -420,7 +420,12 @@ void handleMetaKnobChange(int knob, int button, int delta) {
   const int KNOB_META_PARAM = 1;
   const int KNOB_META_MODE = 2;
 
+  const int KNOB_BUTTON_OFFSET = 6; // button 6 is on knob 0, 7 on 1, 8 on 2.
+
+  const float STEP_SIZE_STEP_SIZE = 0.01;
+
   int new_value;
+  float new_step_size;
   String msg = "";
 
 //  msg = msg + fx; // fx = 1 thru 8 only
@@ -511,17 +516,54 @@ void handleMetaKnobChange(int knob, int button, int delta) {
       switch (knob) {
         case KNOB_META_INDEX:
           // first knob sets knob's target fx
-          // @#@u
+          new_value = knob_config[button - KNOB_BUTTON_OFFSET].fx + delta;
+          // constrain to fx we can control
+          if (new_value < 1) {
+            new_value = 1;
+          } else if (new_value > 8) {
+            new_value = 8;
+          }
+          knob_config[button - KNOB_BUTTON_OFFSET].fx = new_value;
+          msg += " Knob ";
+          msg += (button - KNOB_BUTTON_OFFSET);
+          msg += ": fx ";
+          msg += new_value;
+          sendOSCString("/foobar/knob_meta", msg.c_str());
           break;
 
         case KNOB_META_PARAM:
           // second knob sets knob's target fx parameter
-          // @#@u
+          new_value = knob_config[button - KNOB_BUTTON_OFFSET].fxparam + delta;
+          if (new_value < 1) {
+            new_value = 1;
+          } else if (new_value > 255) {
+            // Adjust to taste: I have no idea how many fxparams an fx can actually have, or realistically would have
+            new_value = 255;
+          }
+          knob_config[button - KNOB_BUTTON_OFFSET].fxparam = new_value;
+          msg += " Knob ";
+          msg += (button - KNOB_BUTTON_OFFSET);
+          msg += ": fxparam ";
+          msg += new_value;
+          sendOSCString("/foobar/knob_meta", msg.c_str());
           break;
 
         case KNOB_META_MODE:
           // third knob sets knob's scale per tick? knob mode?
-          // @#@u
+          new_step_size = knob_config[button - KNOB_BUTTON_OFFSET].step_size + ((float)delta * STEP_SIZE_STEP_SIZE);
+          if (new_step_size < 0.01) {
+            // in a normalized fxparam, what's the actual useful minimum knob step size? 0.01? 0.001?
+            new_step_size = 0.01;
+          } else if (new_step_size > 1.0) {
+            // in a normalized fxparam, what's the actual useful maximum knob step size? 0.1? 0.5?
+            new_step_size = 1.0;
+          }
+          knob_config[button - KNOB_BUTTON_OFFSET].step_size = new_step_size;
+          msg += " Knob ";
+          msg += (button - KNOB_BUTTON_OFFSET);
+          msg += ": step size ";
+          msg += new_step_size;
+          sendOSCString("/foobar/knob_meta", msg.c_str());
           break;
       }
       break;
@@ -537,9 +579,7 @@ void handleMetaKnobChange(int knob, int button, int delta) {
 /// a knob has been turned
 void handleKnobChange(int knob, int delta) {
 
-  const float KNOB_STEP_SIZE = 0.05; // adjust to taste
-
-  daw_state.fx_knob[knob].value = (daw_state.fx_knob[knob].value + KNOB_STEP_SIZE * delta);
+  daw_state.fx_knob[knob].value = (daw_state.fx_knob[knob].value + knob_config[knob].step_size * delta);
   if (daw_state.fx_knob[knob].value > 1.01) {
     daw_state.fx_knob[knob].value = 1.0;
   } else if (daw_state.fx_knob[knob].value < 0.0) {
@@ -573,6 +613,7 @@ void setupControls() {
     // for now, default to controlling Drive/Tone/Level on TS-999, fx #4 on track 1
     knob_config[ii].fx = FXPARAM_OVERDRIVE_INDEX;
     knob_config[ii].fxparam = FXPARAM_OVERDRIVE_DRIVE + ii;
+    knob_config[ii].step_size = 0.04;
   }
 
   attachInterrupt( digitalPinToInterrupt(PIN_ROTARY_A[0]),	handleRotaryInterrupt0, CHANGE);
