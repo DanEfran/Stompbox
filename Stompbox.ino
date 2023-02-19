@@ -231,6 +231,9 @@ button_configuration_s button_config[NUM_BUTTONS];
 // behavior modes and control targets of the knobs
 knob_configuration_s knob_config[NUM_KNOBS];
 
+// hibernation mode locks controls
+bool hibernating = false;
+
 // ** visual display (LEDs) **
 
 
@@ -370,9 +373,32 @@ void handleButtonStateChange(int ii) {
   } else if (ii < 9) {
     // knob selects 6-8
     handleStompButtonStateChange(ii);
+    checkForKnobPressCombo();
   } else {
     // joystick select
     // best to ignore this button: probably too easily kicked unintentionally
+  }
+
+}
+
+/// enter a sleep state where the record button (etc.) won't be triggered accidentally
+void hibernate(bool enterHibernation = true) {
+  
+  hibernating = enterHibernation;
+  updateLampColorsForHibernation();
+
+}
+
+// press all three knob select buttons together: enter sleep mode
+void checkForKnobPressCombo() {
+  
+  bool press_0 = ((button_state[6] == PRESSING) || (button_state[6] == PRESSED));
+  bool press_1 = ((button_state[7] == PRESSING) || (button_state[7] == PRESSED));
+  bool press_2 = ((button_state[8] == PRESSING) || (button_state[8] == PRESSED));
+  bool all_three_pressed = press_0 && press_1 && press_2;
+  
+  if (all_three_pressed) {
+    hibernate(!hibernating);
   }
 
 }
@@ -426,8 +452,7 @@ void handleMetaKnobChange(int knob, int button, int delta) {
 
   int new_value;
   float new_step_size;
-  String msg = "";
-
+  
 //  msg = msg + fx; // fx = 1 thru 8 only
 //  sendOSCString("/foobar/knob", msg.c_str());
 
@@ -455,11 +480,7 @@ void handleMetaKnobChange(int knob, int button, int delta) {
             new_value = 8;
           }
           button_config[button].fx_index = new_value;
-          msg += " Button ";
-          msg += button;
-          msg += ": fx ";
-          msg += new_value;
-          sendOSCString("/foobar/knob_meta", msg.c_str());
+          
           break;
 
         case KNOB_META_PARAM:
@@ -472,11 +493,7 @@ void handleMetaKnobChange(int knob, int button, int delta) {
             new_value = 255;
           }
           button_config[button].fx_param = new_value;
-          msg += " Button ";
-          msg += button;
-          msg += ": fxparam ";
-          msg += button_config[button].fx_param;
-          sendOSCString("/foobar/knob_meta", msg.c_str());
+          
           break;
 
         case KNOB_META_MODE:
@@ -485,20 +502,12 @@ void handleMetaKnobChange(int knob, int button, int delta) {
           //switch (button_config[button].button_mode) {
           //  case FX_BYPASS:
               button_config[button].button_mode = FXPARAM_CYCLE_3;
-              msg += " Button ";
-              msg += button;
-              msg += ": mode ";
-              msg += "CYCLE_3";
-              sendOSCString("/foobar/knob_meta", msg.c_str());
+              
           //    break;
           } else {
           //  case FXPARAM_CYCLE_3:
               button_config[button].button_mode = FX_BYPASS;
-              msg += " Button ";
-              msg += button;
-              msg += ": mode ";
-              msg += "BYPASS";
-              sendOSCString("/foobar/knob_meta", msg.c_str());
+              
           //    break;
 
           //  default:
@@ -524,11 +533,7 @@ void handleMetaKnobChange(int knob, int button, int delta) {
             new_value = 8;
           }
           knob_config[button - KNOB_BUTTON_OFFSET].fx = new_value;
-          msg += " Knob ";
-          msg += (button - KNOB_BUTTON_OFFSET);
-          msg += ": fx ";
-          msg += new_value;
-          sendOSCString("/foobar/knob_meta", msg.c_str());
+          
           break;
 
         case KNOB_META_PARAM:
@@ -541,11 +546,7 @@ void handleMetaKnobChange(int knob, int button, int delta) {
             new_value = 255;
           }
           knob_config[button - KNOB_BUTTON_OFFSET].fxparam = new_value;
-          msg += " Knob ";
-          msg += (button - KNOB_BUTTON_OFFSET);
-          msg += ": fxparam ";
-          msg += new_value;
-          sendOSCString("/foobar/knob_meta", msg.c_str());
+          
           break;
 
         case KNOB_META_MODE:
@@ -559,11 +560,7 @@ void handleMetaKnobChange(int knob, int button, int delta) {
             new_step_size = 1.0;
           }
           knob_config[button - KNOB_BUTTON_OFFSET].step_size = new_step_size;
-          msg += " Knob ";
-          msg += (button - KNOB_BUTTON_OFFSET);
-          msg += ": step size ";
-          msg += new_step_size;
-          sendOSCString("/foobar/knob_meta", msg.c_str());
+          
           break;
       }
       break;
@@ -621,6 +618,38 @@ void setupControls() {
   attachInterrupt( digitalPinToInterrupt(PIN_ROTARY_A[2]),	handleRotaryInterrupt2, CHANGE);
  
 } // init_controls
+
+void scanControlsWhileHibernating() {
+
+  for (int ii = 6; ii <= 8; ii++) {
+
+    int result = digitalRead(PIN_BUTTON[ii]);
+
+    // using internal pullup resistors and grounding buttons, so 0 = make, 1 = break
+    if (result == 0) {
+      // button is depressed
+      if (button_state[ii] == PRESSING) {
+        // caller had a chance to respond to PRESSING state after last call, so we can move on.
+        button_state[ii] = PRESSED;
+      } else if (button_state[ii] != PRESSED) {
+        // was UNPRESSED or RELEASING, not anymore
+        button_state[ii] = PRESSING;
+      }
+    } else {
+      // button is not depressed      
+      if (button_state[ii] == RELEASING) {
+        // caller had a chance to respond to RELEASING state after last call, so we can move on.
+        button_state[ii] = UNPRESSED;
+      } else if (button_state[ii] != UNPRESSED) {
+        // was PRESSING or PRESSED, not anymore        
+        button_state[ii] = RELEASING;
+      }
+    }
+  }
+  
+  checkForKnobPressCombo();
+
+}
 
 /// poll all controls once for changes
 void scanControls() {
@@ -688,8 +717,6 @@ void scanControls() {
 
   // knobs
 
-  String msg = "";
-	
 //  byte oldSREG = SREG; // save interrupts status (on or off; likely on)
 //	noInterrupts(); // protect event buffer integrity
 
@@ -875,6 +902,20 @@ void updateLampColors() {
 }
 
 
+void updateLampColorsForHibernation() {
+
+  // note: we presently are relying on these light shows being slow and blocking, to heavily debounce the knob press combo
+  // (that is, to give the user time to release all three knobs, so we don't oscillate in and out of the mode while the buttons are held down)
+  // (this issue arises because we're looking for all buttons pressed or pressing. If we looked for, say, two pressed and one pressing,
+  //  we wouldn't have to worry about debouncing. Two pressed and one releasing is another valid test, maybe even cleaner.
+  //  but we want light shows here anyway, and presently light shows are slow and blocking, so this should work fine.)
+  if (hibernating) {
+    hibernateLightshow();    
+  } else {
+    startupLightshow();
+  }
+}
+
 /// send an OSC message asking the DAW to start or stop recording
 void sendRecordToggle() {
   sendOSCTrigger("/record");
@@ -1017,11 +1058,17 @@ void setup() {
 /// main arduino loop
 void loop() {
 
-  scanControls();
+  if (hibernating) {
 
-  listenForOSC();
+    scanControlsWhileHibernating();
 
-  watchForDisconnection();
+  } else {
+
+    scanControls();
+    listenForOSC();
+    watchForDisconnection();
+
+  }
 
 //  idleAnimation(); // (optional; not real-time optimized)
  
