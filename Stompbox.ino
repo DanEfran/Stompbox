@@ -374,8 +374,11 @@ void handleButtonStateChange(int ii) {
     handleStompButtonStateChange(ii);
   } else if (ii < 9) {
     // knob selects 6-8
-    handleStompButtonStateChange(ii);
-    checkForKnobPressCombo();
+    bool combo = checkForKnobPressCombo();
+    if (!combo) {
+      handleStompButtonStateChange(ii);
+    }
+    
   } else {
     // joystick select
     // best to ignore this button: probably too easily kicked unintentionally
@@ -392,7 +395,7 @@ void hibernate(bool enterHibernation = true) {
 }
 
 // press all three knob select buttons together: enter sleep mode
-void checkForKnobPressCombo() {
+bool checkForKnobPressCombo() {
   
   bool press_0 = ((button_state[6] == PRESSING) || (button_state[6] == PRESSED));
   bool press_1 = ((button_state[7] == PRESSING) || (button_state[7] == PRESSED));
@@ -410,6 +413,7 @@ void checkForKnobPressCombo() {
     hibernate(!hibernating);
   }
 
+  return two_pressed_one_releasing;
 }
 
 /// set up data structure to track remote DAW's status
@@ -1074,9 +1078,9 @@ void loop() {
 
   } else {
 
+    watchForDisconnection();
     scanControls();
     listenForOSC();
-    watchForDisconnection();
 
   }
 
