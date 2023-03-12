@@ -234,6 +234,8 @@ knob_configuration_s knob_config[NUM_KNOBS];
 // hibernation mode locks controls
 bool hibernating = false;
 
+bool connected = false;
+
 // ** visual display (LEDs) **
 
 
@@ -910,9 +912,11 @@ void updateLampColorsForHibernation() {
   //  we wouldn't have to worry about debouncing. Two pressed and one releasing is another valid test, maybe even cleaner.
   //  but we want light shows here anyway, and presently light shows are slow and blocking, so this should work fine.)
   if (hibernating) {
-    hibernateLightshow();    
+    digitalWrite(LED_BUILTIN, 0); 
+    hibernateLightshow();
   } else {
     startupLightshow();
+    digitalWrite(LED_BUILTIN, connected ? 0 : 1);
   }
 }
 
@@ -971,7 +975,6 @@ void watchForDisconnection() {
 
   time_ms now = millis();
   
-  static bool connected = false;
   static bool status_changed = true;
   
   // if there hasn't been a reply in a while...
