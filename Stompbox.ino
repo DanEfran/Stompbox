@@ -397,9 +397,16 @@ void checkForKnobPressCombo() {
   bool press_0 = ((button_state[6] == PRESSING) || (button_state[6] == PRESSED));
   bool press_1 = ((button_state[7] == PRESSING) || (button_state[7] == PRESSED));
   bool press_2 = ((button_state[8] == PRESSING) || (button_state[8] == PRESSED));
-  bool all_three_pressed = press_0 && press_1 && press_2;
+  bool releasing_0 = (button_state[6] == RELEASING);
+  bool releasing_1 = (button_state[7] == RELEASING);
+  bool releasing_2 = (button_state[8] == RELEASING);
+
+  bool two_pressed_one_releasing =
+    (releasing_0 && press_1 && press_2) ||
+    (press_0 && releasing_1 && press_2) ||
+    (press_0 && press_1 && releasing_2);
   
-  if (all_three_pressed) {
+  if (two_pressed_one_releasing) {
     hibernate(!hibernating);
   }
 
