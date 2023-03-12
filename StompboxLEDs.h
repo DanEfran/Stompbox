@@ -33,6 +33,7 @@ extern CRGB leds[];
 
 void setupLEDs();
 void startupLightshow();
+void hibernateLightshow();
 
 #define INCLUDED_StompboxLEDs_ALREADY
 #endif

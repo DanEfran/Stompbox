@@ -90,6 +90,36 @@ void startupLightshow() {
 
 }
 
+/// stand down
+void hibernateLightshow() {
+
+  // each lamp dims to dark
+  for (int i = 1; i < NUM_LEDS; i++) {
+    glowDown(i, H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_LAMP_IDLE, V_DIM, 2);
+  }
+
+  // and goes out completely
+  for (int i = 1; i < NUM_LEDS; i++) {
+    leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_OFF);
+    FastLED.show();
+    delay(100);
+  }
+
+  // record light changes color and glows quite bright...
+  glowDown(0, H_RED, S_FULL, V_DIM, V_OFF, 4);
+
+  delay(200);
+  
+  glowUp(0, H_GREEN, S_FULL, V_DIM, V_FULL, 3);
+
+  delay(300);
+
+  // ...then dims to dim
+  glowDown(0, H_GREEN, S_FULL, V_FULL, V_DIM, 3);
+
+  delay(700);
+}
+
 /// optional idle animation. proof of concept. useful when debugging to show program is still running
 void idleAnimation() {
 
