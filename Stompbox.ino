@@ -321,6 +321,15 @@ void consumeKnobChanges(int ii, bool resetValue = false) {
 /// something happened to the record button
 void handleRecordButtonStateChange() {
   if (button_state[0] == RELEASING) {
+
+    // debounce button
+    const time_ms minimum_time_between_stomps = 250;
+    time_ms now = millis();
+    if (now < button_config[0].time_of_last_release + minimum_time_between_stomps) {
+      return;
+    }
+    button_config[0].time_of_last_release = now;
+
     sendRecordToggle();
   } 
 }
@@ -704,9 +713,9 @@ void scanControls() {
 
   for (int ii = 0; ii < NUM_PEDALS; ii++) {
 
-    const int threshold = 10;
+    const int threshold = 20;
 
-    //    analogRead(PIN_PEDAL[ii]); // @#@? some sources recommend an extra read to stabilize ADC. We could test this.
+    analogRead(PIN_PEDAL[ii]); // @#@? some sources recommend an extra read to stabilize ADC. We could test this.
     int result = analogRead(PIN_PEDAL[ii]); 
   
     int was = pedal_state[ii].value;
