@@ -1062,12 +1062,12 @@ void setup() {
 
   // activate arduino pins for input and output as appropriate
   setupPins();
-  
-  setupDawState();
-  setupButtons();
 
   // set up and clear controls status
   setupControls();
+
+  setupDawState();
+  setupButtons();
 
   setupLEDs();
   
