@@ -1,11 +1,10 @@
 #include "StompboxOSC.h"
 
 // OSC-over-USB support
+#include <SLIPEncodedSerial.h>
 #ifdef BOARD_HAS_USB_SERIAL
-#include <SLIPEncodedUSBSerial.h>
 SLIPEncodedUSBSerial SLIPSerial( thisBoardsSerialUSB );
 #else
-#include <SLIPEncodedSerial.h>
 SLIPEncodedSerial SLIPSerial(Serial);
 #endif
 
@@ -72,17 +71,17 @@ void listenForOSC() {
       // turn on a warning light for an OSC error
       digitalWrite(LED_BUILTIN, 1); // @#@d
 
-      int err = bundleIN->getError();
-      char report[99];
-      sprintf(report, "%d: '%s' (%d)", err, bundleIN->incomingBuffer, bundleIN->incomingBufferSize);
-      sendOSCString("/foobar/error", report);
-      sendOSCString("/foobar/error", bundleIN->errorDetails);
-      bundleIN->errorDetails[0] = 0;
+      // int err = bundleIN->getError();
+      // char report[99];
+      // sprintf(report, "%d: '%s' (%d)", err, bundleIN->incomingBuffer, bundleIN->incomingBufferSize);
+      // sendOSCString("/foobar/error", report);
+      // sendOSCString("/foobar/error", bundleIN->errorDetails);
+      // bundleIN->errorDetails[0] = 0;
 
     } else if (listeningFor == BUNDLE) {
 
-      char report[99];
-      sprintf(report, "got; (%d) '%s'", bundleIN->incomingBufferSize, bundleIN->incomingBuffer);
+      // char report[99];
+      // sprintf(report, "got; (%d) '%s'", bundleIN->incomingBufferSize, bundleIN->incomingBuffer);
       //sendOSCString("/foobar/bundle", report);
 
       dispatchBundleContents(bundleIN);
@@ -91,8 +90,8 @@ void listenForOSC() {
 
     } else if (listeningFor == MESSAGE) {
 
-      char report[99];
-      sprintf(report, "got; (%d) '%s'", messageIN->incomingBufferSize, messageIN->incomingBuffer);
+      // char report[99];
+      // sprintf(report, "got; (%d) '%s'", messageIN->incomingBufferSize, messageIN->incomingBuffer);
       //sendOSCString("/foobar/message", report);
 
       dispatchMessage(messageIN);

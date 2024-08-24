@@ -6,11 +6,10 @@
 #include <OSCBoards.h>
 
 // OSC-over-USB support
+#include <SLIPEncodedSerial.h>
 #ifdef BOARD_HAS_USB_SERIAL
-#include <SLIPEncodedUSBSerial.h>
 extern SLIPEncodedUSBSerial SLIPSerial;
 #else
-#include <SLIPEncodedSerial.h>
 extern SLIPEncodedSerial SLIPSerial;
 #endif
 
