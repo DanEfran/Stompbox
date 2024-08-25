@@ -1,4 +1,5 @@
 #include "StompboxOSC.h"
+#include "StompboxLEDs.h"
 
 // OSC-over-USB support
 #include <SLIPEncodedSerial.h>
@@ -69,7 +70,7 @@ void listenForOSC() {
     if ( (listeningFor == BUNDLE) && bundleIN->hasError() ) {
       
       // turn on a warning light for an OSC error
-      digitalWrite(LED_BUILTIN, 1); // @#@d
+      setBuiltInLED(1); // @#@d
 
       // int err = bundleIN->getError();
       // char report[99];

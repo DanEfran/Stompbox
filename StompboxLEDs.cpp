@@ -15,6 +15,8 @@ const int NUM_LEDS = 6;
 // the NeoPixel LEDs (FastLED display buffer: set these and call show to update display)
 CRGB leds[NUM_LEDS];
 
+byte record_color = H_RED;
+
 // ** glowy stuff **
 
 void setupLEDs() {
@@ -59,7 +61,7 @@ void glowDown(int led, byte hue, byte sat, byte val_from, byte val_to, int slown
 void startupLightshow() {
 
   // begin dark
-  leds[0] = CHSV(H_RED, S_FULL, V_OFF);
+  leds[0] = CHSV(record_color, S_FULL, V_OFF);
   for (int i = 1; i < NUM_LEDS; i++) {
     leds[i] = CHSV(H_VINTAGE_LAMP, S_VINTAGE_LAMP, V_OFF);
   }
@@ -71,11 +73,11 @@ void startupLightshow() {
   }
 
   // record light glows quite bright...
-  glowUp(0, H_RED, S_FULL, V_OFF, V_FULL, 3);
+  glowUp(0, record_color, S_FULL, V_OFF, V_FULL, 3);
   delay(300);
 
   // ...then dims to idle
-  glowDown(0, H_RED, S_FULL, V_FULL, V_DIM, 4);
+  glowDown(0, record_color, S_FULL, V_FULL, V_DIM, 4);
   // Best UI for Record button is not yet clear. Adjust to taste.
   delay(700);
 
@@ -106,7 +108,7 @@ void hibernateLightshow() {
   }
 
   // record light changes color and glows quite bright...
-  glowDown(0, H_RED, S_FULL, V_DIM, V_OFF, 4);
+  glowDown(0, record_color, S_FULL, V_DIM, V_OFF, 4);
 
   delay(200);
   
@@ -150,4 +152,8 @@ void flashBuiltInLED()
   digitalWrite(LED_BUILTIN, 1);
   delay(50);
   digitalWrite(LED_BUILTIN, 0);
+}
+
+void setBuiltInLED(bool on) {
+  digitalWrite(LED_BUILTIN, on);
 }

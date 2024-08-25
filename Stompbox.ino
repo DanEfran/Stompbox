@@ -158,7 +158,7 @@ const int NUM_PEDALS = 3;
 
 // arduino pin assignments...
 
-//const byte PIN_LED_BUILTIN = LED_BUILTIN; // arduino on-board LED. May or may not be visible in final version of hardware.
+//const byte PIN_LED_BUILTIN = LED_BUILTIN; // arduino on-board LED. May or may not be visible in final version of hardware; doubled by amber warning light in record button (separate from record button RGB LED).
 //const byte PIN_LED_DATA = 14; // NeoPixel data out. Controlled via FastLED library.
 const byte PIN_BUTTON_0 = A3; // 'Record' button. LED 0 illuminates the clear button itself (other buttons' LEDs are just adjacent display lamps)
 const byte PIN_BUTTON_1 = 10; // footswitch button 1. (Nominally, a stomp button as found on guitar pedals. I don't like those so I'm using softer-press buttons.)
@@ -923,6 +923,11 @@ void updateLampColors() {
 
 }
 
+void setRecordColor(byte val = V_DIM) {
+  record_color = connected ? H_RED : H_VIOLET;
+  leds[0] = CHSV(record_color, S_FULL, val);
+  FastLED.show();
+}
 
 void updateLampColorsForHibernation() {
 
@@ -932,11 +937,12 @@ void updateLampColorsForHibernation() {
   //  we wouldn't have to worry about debouncing. Two pressed and one releasing is another valid test, maybe even cleaner.
   //  but we want light shows here anyway, and presently light shows are slow and blocking, so this should work fine.)
   if (hibernating) {
-    digitalWrite(LED_BUILTIN, 0); 
+    // setBuiltInLED(0); 
     hibernateLightshow();
   } else {
+    setRecordColor(V_OFF);
     startupLightshow();
-    digitalWrite(LED_BUILTIN, connected ? 0 : 1);
+    // setBuiltInLED(connected ? 0 : 1);
   }
 }
 
@@ -991,7 +997,7 @@ void sendWah(float value) {
 // (indicating likely serial port disconnection: PC Bridge stopped, DAW not running, DAW OSC ports misconfigured, etc.)
 void watchForDisconnection() {
 
-  const time_ms too_long = 3000;
+  const time_ms too_long = 1500; // was 3000;
 
   time_ms now = millis();
   
@@ -1020,7 +1026,8 @@ void watchForDisconnection() {
   }
 
   if (status_changed) {
-    digitalWrite(LED_BUILTIN, connected ? 0 : 1);
+    // setBuiltInLED(connected ? 0 : 1);
+    setRecordColor(V_DIM);
     status_changed = false;
   }
 
