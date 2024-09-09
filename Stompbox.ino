@@ -132,7 +132,7 @@ typedef enum button_mode_e {
 /// each button knows which fx (and which fx parameter, where appropriate) it should control, and what it should do to it. 
 typedef struct button_configuration_s {
 
-  int fx_index; // fx index in DAW track 1 fx chain: we use indices 2 through 8
+  int fx_index; // fx index in DAW track 1 fx chain: we use indices 3 through 8
   int fx_param; // parameter index in that fx plugin's controls
   button_mode_e button_mode; // how the button behaves
   time_ms time_of_last_release; // for debouncing
@@ -155,6 +155,12 @@ const int NUM_KNOBS = 3;
 
 // Two joystick axes and one external expression pedal input
 const int NUM_PEDALS = 3;
+
+// to work around a reaper/OSC glitch, we only control FX #3 and up.
+// (control #2's feedback comes in a bundle with a bad size apparently?)
+const int FIRST_FX_INDEX = 3;
+const int LAST_FX_INDEX = 8; // apparent S&M_FXBYP limit
+                    // (see C:\Users\Dan\AppData\Roaming\REAPER\S&M.ini)
 
 // arduino pin assignments...
 
@@ -445,7 +451,9 @@ void setupButtons() {
   // most buttons are FX bypass buttons, emulating the fundamental control scheme of a guitar pedalboard
   for (int ii = 1; ii <= 8; ii++) {
     button_config[ii].button_mode = FX_BYPASS;
-    button_config[ii].fx_index = (ii > 5) ? ii : ii + 1; // 2, 3, 4, 5, (6), 6, 7, 8
+    // to work around a reaper/OSC glitch, we only control FX #3 and up.
+    // default FX to bypass per button: 3, 4, 5, 6, (7), 6, 7, 8
+    button_config[ii].fx_index = (ii > 5) ? ii : ii + 2; 
     button_config[ii].time_of_last_release = millis();
     // .fx_param irrelevant for this mode
   }
@@ -475,7 +483,7 @@ void handleMetaKnobChange(int knob, int button, int delta) {
   int new_value;
   float new_step_size;
   
-//  msg = msg + fx; // fx = 1 thru 8 only
+//  msg = msg + fx; // fx = 3 thru 8 only
 //  sendOSCString("/foobar/knob", msg.c_str());
 
   // note: we currently allow delta to be anything here, but it's probably best if it's only +1 or -1.
@@ -496,10 +504,10 @@ void handleMetaKnobChange(int knob, int button, int delta) {
           // first knob sets button's target fx
           new_value = button_config[button].fx_index + delta;
           // constrain to fx we can control
-          if (new_value < 1) {
-            new_value = 1;
-          } else if (new_value > 8) {
-            new_value = 8;
+          if (new_value < FIRST_FX_INDEX) {
+            new_value = FIRST_FX_INDEX;
+          } else if (new_value > LAST_FX_INDEX) {
+            new_value = LAST_FX_INDEX;
           }
           button_config[button].fx_index = new_value;
           
@@ -549,10 +557,10 @@ void handleMetaKnobChange(int knob, int button, int delta) {
           // first knob sets knob's target fx
           new_value = knob_config[button - KNOB_BUTTON_OFFSET].fx + delta;
           // constrain to fx we can control
-          if (new_value < 1) {
-            new_value = 1;
-          } else if (new_value > 8) {
-            new_value = 8;
+          if (new_value < FIRST_FX_INDEX) {
+            new_value = FIRST_FX_INDEX;
+          } else if (new_value > LAST_FX_INDEX) {
+            new_value = LAST_FX_INDEX;
           }
           knob_config[button - KNOB_BUTTON_OFFSET].fx = new_value;
           
@@ -968,7 +976,7 @@ void sendFxBypassToggle(int track, int fx) {
   sendOSCInt(addr.c_str(), 1);
   
   String msg = "_S&M_FXBYP";
-  msg = msg + fx; // fx = 1 thru 8 only
+  msg = msg + fx; // fx = 3 and up only for our purposes
   sendOSCString("/action/str", msg.c_str());
   
 }
