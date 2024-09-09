@@ -46,7 +46,7 @@
 */
 
 // how much output to terminal window? 0 = silent running, 1 = user, 2 = power user, 3 = debug
-let verbose = 2;
+let verbose = 0;
 
 let comName;
 // comName = '/dev/ttyUSB0'; // Uncomment this line to select a specific port instead of searching for an Arduino.
@@ -86,8 +86,22 @@ server.on('message', (message, rinfo) => {
 
 	if (verbose >= 3) {
 		console.log(`  -> ${message.join(' ')} (${rinfo.address}:${rinfo.port})`);
+		//console.log(`  -> ${message.toString()}\n`);
+		var message_string =  '=>';
+		for (let ii = 0; ii < message.length; ii++) {
+			message_string = message_string.concat(message[ii] ? String.fromCharCode(message[ii]) : '~' );
+		}
+		message_string = message_string.concat('<=');
+		console.log(`${message_string}`);
 	} else if (verbose >= 2) {
-		console.log(`  -> ${message.toString()}\n`); // @#@#@
+		var message_string =  '=>';
+		for (let ii = 0; ii < message.length; ii++) {
+			message_string = message_string.concat(message[ii] ? String.fromCharCode(message[ii]) : '~' );
+		}
+		message_string = message_string.concat('<=');
+		console.log(`${message_string}`);
+		//console.log(`  -> ${message.toString()}\n`); // @#@#@
+		
 	} else if (verbose >= 1) {
 		console.log('\t>');
 	}
@@ -119,6 +133,7 @@ function sendUDP(message) {
 	
 	if (verbose >= 3) {
 		console.log(`<-   ${message.join(' ')} (${remoteAddr}:${remotePort})`);
+		console.log(`<-   ${message.toString()}\n`); // @#@#@
 	} else if (verbose >= 2) {
 		console.log(`<-   ${message.toString()}\n`); // @#@#@
 	} else if (verbose >= 1) {
@@ -193,7 +208,7 @@ if (comName) {
 					} else if (verbose >= 1) {
 						console.log('- Port: ' + port.friendlyName);
 					}
-					return true;
+//			return true; // @#@t (commenting out this return lets us find the last arduino instead of the first)
 				}
 				return false;
 			});
