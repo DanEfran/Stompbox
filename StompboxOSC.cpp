@@ -80,7 +80,29 @@ void listenForOSC() {
       // sprintf(report, "%d: '%s' (%d)", err, bundleIN->incomingBuffer, bundleIN->incomingBufferSize);
       // sendOSCString("/foobar/error", bundleIN->errorDetails);
       // bundleIN->errorDetails[0] = 0;
-      
+
+      /*
+        @#@#@ Known Issue: for some reason, reaper sends an OSC bundle sometimes; separate messages at other times. OSC is reporting an error in a bundle sometimes, which currently involves ignoring the bundle's contents. It seems like reaper may be misconfiguring the bundle regarding the word-alignment that OSC requires?
+        The result is that the first stompbox button (after Record) is sending its messages but the feedback is getting clobbered, so it flashes the amber warning lamp rather than properly setting its own lamp state as the others do. Weird and annoying; but the workaround is to ignore that lamp, I guess.
+
+        Example I/O: button 2's reply (2 messages) vs button 1's (bundle):
+
+              <-   /action/40939,i☺
+
+              <-   /action/str,s_S&M_FXBYP3
+
+              =>/track/1/fx/3/fxparam/5/value~~~,f~~?~~<=
+              =>/track/1/fx/3/bypass~~~~,f~~~~~~<=
+              <-   /action/40939,i☺
+
+              <-   /action/str,s_S&M_FXBYP2
+
+              =>#bundle~~~~~☺~~~~~~(/track/1/fx/2/fxparam/3/value~~~,f~~~~~~~~~ /track/1/fx/2/bypass~~~~,f~~?~~<=
+        
+        Somewhere in there is a problem apparently.
+      */
+
+      dispatchBundleContents(bundleIN);
       bundleIN->empty();
       listeningFor = BUNDLE_OR_MESSAGE_START;
 
