@@ -728,7 +728,10 @@ void scanControls() {
       if (ii == PEDAL_Z) {
         float answer = pedal_state[ii].value / 1023.0;
         answer = 1.0 - answer; // reverse direction
-        sendWah(answer);
+
+        // @#@#@t pedal disabled for now: pedal sends lots of messages, even when unplugged. May be causing OSC errors.
+        //sendWah(answer);
+
       } else {
         // @#@u PEDAL_X and PEDAL_Y (the joystick) are not working. Possibly a wiring problem.
         // The joystick is an optional bonus feature anyway, so for now we ignore these non-functional inputs. 
@@ -1059,7 +1062,6 @@ void setupPins() {
 
   // ...and there's a "reset light", a normal amber LED which echoes the built-in LED on pin 13
   pinMode(PIN_LED_BUILTIN, OUTPUT);
-
 }
 
 /// main arduino init
@@ -1069,6 +1071,8 @@ void setup() {
 
   // activate arduino pins for input and output as appropriate
   setupPins();
+  
+  setBuiltInLED(false);
 
   // set up and clear controls status
   setupControls();

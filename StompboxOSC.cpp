@@ -70,14 +70,19 @@ void listenForOSC() {
     if ( (listeningFor == BUNDLE) && bundleIN->hasError() ) {
       
       // turn on a warning light for an OSC error
-      setBuiltInLED(1); // @#@d
-
+      flashBuiltInLED();
+      // setBuiltInLED(1); // @#@d
       // int err = bundleIN->getError();
       // char report[99];
-      // sprintf(report, "%d: '%s' (%d)", err, bundleIN->incomingBuffer, bundleIN->incomingBufferSize);
+      // sprintf(report, "OSC Error %d", err);
       // sendOSCString("/foobar/error", report);
+
+      // sprintf(report, "%d: '%s' (%d)", err, bundleIN->incomingBuffer, bundleIN->incomingBufferSize);
       // sendOSCString("/foobar/error", bundleIN->errorDetails);
       // bundleIN->errorDetails[0] = 0;
+      
+      bundleIN->empty();
+      listeningFor = BUNDLE_OR_MESSAGE_START;
 
     } else if (listeningFor == BUNDLE) {
 

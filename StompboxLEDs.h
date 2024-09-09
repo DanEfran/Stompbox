@@ -37,6 +37,7 @@ void setupLEDs();
 void startupLightshow();
 void hibernateLightshow();
 void setBuiltInLED(bool on);
+void flashBuiltInLED();
 
 #define INCLUDED_StompboxLEDs_ALREADY
 #endif
