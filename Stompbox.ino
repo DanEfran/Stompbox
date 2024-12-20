@@ -211,10 +211,10 @@ const byte PIN_ROTARY_B[NUM_KNOBS] = {
 };
 
 // fx parameter number for a particular control we're interested in, 'The Anvil' amp's channel select
-const int FXPARAM_ANVIL_AMP_INDEX = 5;
+const int FXPARAM_ANVIL_AMP_INDEX = 9;
 const int FXPARAM_ANVIL_AMP_CHANNEL = 2;
 
-const int FXPARAM_OVERDRIVE_INDEX = 4;
+const int FXPARAM_OVERDRIVE_INDEX = 6;
 const int FXPARAM_OVERDRIVE_DRIVE = 2;
 
 // ** globals **
